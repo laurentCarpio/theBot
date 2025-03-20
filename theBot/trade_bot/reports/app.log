@@ -1,0 +1,284 @@
+2025-03-19 22:36:29,771 - INFO - Logging is configured!
+2025-03-19 22:36:29,773 - INFO - ###########################################
+2025-03-19 22:36:29,773 - INFO - CRVUSDT : validation at frequency 5m
+2025-03-19 22:36:29,780 - INFO - CRVUSDT : rule 1 : failed
+2025-03-19 22:36:29,781 - INFO - ###########################################
+2025-03-19 22:36:29,781 - INFO - CRVUSDT : validation at frequency 15m
+2025-03-19 22:36:29,788 - INFO - CRVUSDT : rule 1 : failed
+2025-03-19 22:36:29,788 - INFO - ###########################################
+2025-03-19 22:36:29,788 - INFO - CRVUSDT : validation at frequency 30m
+2025-03-19 22:36:29,793 - INFO - CRVUSDT : rule 1 : failed
+2025-03-19 22:36:29,793 - INFO - ###########################################
+2025-03-19 22:36:29,793 - INFO - CRVUSDT : validation at frequency 1H
+2025-03-19 22:36:29,798 - INFO - CRVUSDT : rule 1 : failed
+2025-03-19 22:36:29,799 - INFO - ###########################################
+2025-03-19 22:36:29,799 - INFO - CRVUSDT : validation at frequency 2H
+2025-03-19 22:36:29,805 - INFO - CRVUSDT : rule 1 : passed
+2025-03-19 22:36:29,805 - INFO - CRVUSDT : rule 2 : passed
+2025-03-19 22:36:29,806 - INFO - CRVUSDT : rule 3 : passed
+2025-03-19 22:36:29,806 - INFO - CRVUSDT : rule 4 : passed
+2025-03-19 22:36:29,807 - INFO - CRVUSDT : rule 5 : passed
+2025-03-19 22:36:29,807 - INFO - ###########################################
+2025-03-19 22:36:29,807 - INFO - CRVUSDT : validation at frequency 4H
+2025-03-19 22:36:29,812 - INFO - CRVUSDT : rule 1 : failed
+2025-03-19 22:36:29,812 - INFO - ###########################################
+2025-03-19 22:36:29,812 - INFO - CRVUSDT : validation at frequency 6H
+2025-03-19 22:36:29,818 - INFO - CRVUSDT : rule 1 : failed
+2025-03-19 22:36:29,818 - INFO - ###########################################
+2025-03-19 22:36:29,819 - INFO - CRVUSDT : validation at frequency 12H
+2025-03-19 22:36:29,824 - INFO - CRVUSDT : rule 1 : failed
+2025-03-19 22:36:29,824 - INFO - ###########################################
+2025-03-19 22:36:29,824 - INFO - CRVUSDT : validation at frequency 1D
+2025-03-19 22:36:29,829 - INFO - CRVUSDT : rule 1 : failed
+2025-03-19 22:36:29,830 - INFO - XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+2025-03-19 22:36:29,832 - INFO - CRVUSDT : ratio 2.2179424670891863 ok for trade
+2025-03-19 22:36:29,833 - INFO - CRVUSDT : all rules has been validated
+2025-03-19 22:36:30,252 - INFO - ###########################################
+2025-03-19 22:36:30,253 - INFO - ENSUSDT : validation at frequency 5m
+2025-03-19 22:36:30,258 - INFO - ENSUSDT : rule 1 : failed
+2025-03-19 22:36:30,258 - INFO - ###########################################
+2025-03-19 22:36:30,258 - INFO - ENSUSDT : validation at frequency 15m
+2025-03-19 22:36:30,263 - INFO - ENSUSDT : rule 1 : failed
+2025-03-19 22:36:30,263 - INFO - ###########################################
+2025-03-19 22:36:30,263 - INFO - ENSUSDT : validation at frequency 30m
+2025-03-19 22:36:30,270 - INFO - ENSUSDT : rule 1 : failed
+2025-03-19 22:36:30,270 - INFO - ###########################################
+2025-03-19 22:36:30,270 - INFO - ENSUSDT : validation at frequency 1H
+2025-03-19 22:36:30,276 - INFO - ENSUSDT : rule 1 : failed
+2025-03-19 22:36:30,277 - INFO - ###########################################
+2025-03-19 22:36:30,277 - INFO - ENSUSDT : validation at frequency 2H
+2025-03-19 22:36:30,290 - INFO - ENSUSDT : rule 1 : passed
+2025-03-19 22:36:30,291 - INFO - ENSUSDT : rule 2 : passed
+2025-03-19 22:36:30,292 - INFO - ENSUSDT : rule 3 : passed
+2025-03-19 22:36:30,293 - INFO - ENSUSDT : rule 4 : passed
+2025-03-19 22:36:30,293 - INFO - ENSUSDT : rule 5 : passed
+2025-03-19 22:36:30,293 - INFO - ###########################################
+2025-03-19 22:36:30,293 - INFO - ENSUSDT : validation at frequency 4H
+2025-03-19 22:36:30,299 - INFO - ENSUSDT : rule 1 : passed
+2025-03-19 22:36:30,300 - INFO - ENSUSDT : rule 2 : passed
+2025-03-19 22:36:30,300 - INFO - ENSUSDT : rule 3 : passed
+2025-03-19 22:36:30,301 - INFO - ENSUSDT : rule 4 : passed
+2025-03-19 22:36:30,301 - INFO - ENSUSDT : rule 5 : passed
+2025-03-19 22:36:30,302 - INFO - ###########################################
+2025-03-19 22:36:30,302 - INFO - ENSUSDT : validation at frequency 6H
+2025-03-19 22:36:30,307 - INFO - ENSUSDT : rule 1 : failed
+2025-03-19 22:36:30,307 - INFO - ###########################################
+2025-03-19 22:36:30,307 - INFO - ENSUSDT : validation at frequency 12H
+2025-03-19 22:36:30,312 - INFO - ENSUSDT : rule 1 : failed
+2025-03-19 22:36:30,312 - INFO - ###########################################
+2025-03-19 22:36:30,312 - INFO - ENSUSDT : validation at frequency 1D
+2025-03-19 22:36:30,318 - INFO - ENSUSDT : rule 1 : failed
+2025-03-19 22:36:30,319 - INFO - XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+2025-03-19 22:36:30,320 - INFO - ENSUSDT : ratio 1.2297376235213806 ok for trade
+2025-03-19 22:36:30,321 - INFO - ENSUSDT : all rules has been validated
+2025-03-19 22:36:30,583 - INFO - ###########################################
+2025-03-19 22:36:30,583 - INFO - COTIUSDT : validation at frequency 5m
+2025-03-19 22:36:30,592 - INFO - COTIUSDT : rule 1 : failed
+2025-03-19 22:36:30,592 - INFO - ###########################################
+2025-03-19 22:36:30,592 - INFO - COTIUSDT : validation at frequency 15m
+2025-03-19 22:36:30,600 - INFO - COTIUSDT : rule 1 : failed
+2025-03-19 22:36:30,600 - INFO - ###########################################
+2025-03-19 22:36:30,600 - INFO - COTIUSDT : validation at frequency 30m
+2025-03-19 22:36:30,607 - INFO - COTIUSDT : rule 1 : failed
+2025-03-19 22:36:30,607 - INFO - ###########################################
+2025-03-19 22:36:30,607 - INFO - COTIUSDT : validation at frequency 1H
+2025-03-19 22:36:30,616 - INFO - COTIUSDT : rule 1 : passed
+2025-03-19 22:36:30,617 - INFO - COTIUSDT : rule 2 : passed
+2025-03-19 22:36:30,617 - INFO - COTIUSDT : rule 3 : passed
+2025-03-19 22:36:30,618 - INFO - COTIUSDT : rule 4 : passed
+2025-03-19 22:36:30,618 - INFO - COTIUSDT : rule 5 : passed
+2025-03-19 22:36:30,619 - INFO - ###########################################
+2025-03-19 22:36:30,619 - INFO - COTIUSDT : validation at frequency 2H
+2025-03-19 22:36:30,625 - INFO - COTIUSDT : rule 1 : passed
+2025-03-19 22:36:30,625 - INFO - COTIUSDT : rule 2 : failed
+2025-03-19 22:36:30,626 - INFO - ###########################################
+2025-03-19 22:36:30,626 - INFO - COTIUSDT : validation at frequency 4H
+2025-03-19 22:36:30,631 - INFO - COTIUSDT : rule 1 : failed
+2025-03-19 22:36:30,631 - INFO - ###########################################
+2025-03-19 22:36:30,632 - INFO - COTIUSDT : validation at frequency 6H
+2025-03-19 22:36:30,637 - INFO - COTIUSDT : rule 1 : failed
+2025-03-19 22:36:30,638 - INFO - ###########################################
+2025-03-19 22:36:30,638 - INFO - COTIUSDT : validation at frequency 12H
+2025-03-19 22:36:30,643 - INFO - COTIUSDT : rule 1 : failed
+2025-03-19 22:36:30,643 - INFO - ###########################################
+2025-03-19 22:36:30,643 - INFO - COTIUSDT : validation at frequency 1D
+2025-03-19 22:36:30,649 - INFO - COTIUSDT : rule 1 : failed
+2025-03-19 22:36:30,649 - INFO - XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+2025-03-19 22:36:30,652 - INFO - COTIUSDT : ratio 1.7778231184186968 ok for trade
+2025-03-19 22:36:30,652 - INFO - COTIUSDT : all rules has been validated
+2025-03-19 22:36:30,923 - INFO - ###########################################
+2025-03-19 22:36:30,923 - INFO - PUFFERUSDT : validation at frequency 5m
+2025-03-19 22:36:30,932 - INFO - PUFFERUSDT : rule 1 : failed
+2025-03-19 22:36:30,932 - INFO - ###########################################
+2025-03-19 22:36:30,932 - INFO - PUFFERUSDT : validation at frequency 15m
+2025-03-19 22:36:30,940 - INFO - PUFFERUSDT : rule 1 : failed
+2025-03-19 22:36:30,940 - INFO - ###########################################
+2025-03-19 22:36:30,941 - INFO - PUFFERUSDT : validation at frequency 30m
+2025-03-19 22:36:30,948 - INFO - PUFFERUSDT : rule 1 : failed
+2025-03-19 22:36:30,948 - INFO - ###########################################
+2025-03-19 22:36:30,948 - INFO - PUFFERUSDT : validation at frequency 1H
+2025-03-19 22:36:30,956 - INFO - PUFFERUSDT : rule 1 : failed
+2025-03-19 22:36:30,956 - INFO - ###########################################
+2025-03-19 22:36:30,957 - INFO - PUFFERUSDT : validation at frequency 2H
+2025-03-19 22:36:30,963 - INFO - PUFFERUSDT : rule 1 : failed
+2025-03-19 22:36:30,963 - INFO - ###########################################
+2025-03-19 22:36:30,963 - INFO - PUFFERUSDT : validation at frequency 4H
+2025-03-19 22:36:30,969 - INFO - PUFFERUSDT : rule 1 : passed
+2025-03-19 22:36:30,970 - INFO - PUFFERUSDT : rule 2 : passed
+2025-03-19 22:36:30,970 - INFO - PUFFERUSDT : rule 3 : passed
+2025-03-19 22:36:30,971 - INFO - PUFFERUSDT : rule 4 : passed
+2025-03-19 22:36:30,971 - INFO - PUFFERUSDT : rule 5 : passed
+2025-03-19 22:36:30,971 - INFO - ###########################################
+2025-03-19 22:36:30,971 - INFO - PUFFERUSDT : validation at frequency 6H
+2025-03-19 22:36:30,977 - INFO - PUFFERUSDT : rule 1 : failed
+2025-03-19 22:36:30,977 - INFO - ###########################################
+2025-03-19 22:36:30,977 - INFO - PUFFERUSDT : validation at frequency 12H
+2025-03-19 22:36:30,983 - INFO - PUFFERUSDT : rule 1 : failed
+2025-03-19 22:36:30,984 - INFO - ###########################################
+2025-03-19 22:36:30,984 - INFO - PUFFERUSDT : validation at frequency 1D
+2025-03-19 22:36:30,990 - INFO - PUFFERUSDT : rule 1 : failed
+2025-03-19 22:36:30,990 - INFO - XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+2025-03-19 22:36:30,992 - INFO - PUFFERUSDT : ratio 1.399672449350967 ok for trade
+2025-03-19 22:36:30,992 - INFO - PUFFERUSDT : all rules has been validated
+2025-03-19 22:36:31,235 - INFO - ###########################################
+2025-03-19 22:36:31,236 - INFO - CHILLGUYUSDT : validation at frequency 5m
+2025-03-19 22:36:31,243 - INFO - CHILLGUYUSDT : rule 1 : passed
+2025-03-19 22:36:31,243 - INFO - CHILLGUYUSDT : rule 2 : passed
+2025-03-19 22:36:31,244 - INFO - CHILLGUYUSDT : rule 3 : passed
+2025-03-19 22:36:31,244 - INFO - CHILLGUYUSDT : rule 4 : passed
+2025-03-19 22:36:31,245 - INFO - CHILLGUYUSDT : rule 5 : failed
+2025-03-19 22:36:31,245 - INFO - ###########################################
+2025-03-19 22:36:31,245 - INFO - CHILLGUYUSDT : validation at frequency 15m
+2025-03-19 22:36:31,253 - INFO - CHILLGUYUSDT : rule 1 : failed
+2025-03-19 22:36:31,253 - INFO - ###########################################
+2025-03-19 22:36:31,254 - INFO - CHILLGUYUSDT : validation at frequency 30m
+2025-03-19 22:36:31,260 - INFO - CHILLGUYUSDT : rule 1 : failed
+2025-03-19 22:36:31,261 - INFO - ###########################################
+2025-03-19 22:36:31,261 - INFO - CHILLGUYUSDT : validation at frequency 1H
+2025-03-19 22:36:31,289 - INFO - CHILLGUYUSDT : rule 1 : passed
+2025-03-19 22:36:31,292 - INFO - CHILLGUYUSDT : rule 2 : passed
+2025-03-19 22:36:31,295 - INFO - CHILLGUYUSDT : rule 3 : passed
+2025-03-19 22:36:31,296 - INFO - CHILLGUYUSDT : rule 4 : passed
+2025-03-19 22:36:31,298 - INFO - CHILLGUYUSDT : rule 5 : passed
+2025-03-19 22:36:31,298 - INFO - ###########################################
+2025-03-19 22:36:31,299 - INFO - CHILLGUYUSDT : validation at frequency 2H
+2025-03-19 22:36:31,309 - INFO - CHILLGUYUSDT : rule 1 : failed
+2025-03-19 22:36:31,309 - INFO - ###########################################
+2025-03-19 22:36:31,309 - INFO - CHILLGUYUSDT : validation at frequency 4H
+2025-03-19 22:36:31,315 - INFO - CHILLGUYUSDT : rule 1 : failed
+2025-03-19 22:36:31,315 - INFO - ###########################################
+2025-03-19 22:36:31,315 - INFO - CHILLGUYUSDT : validation at frequency 6H
+2025-03-19 22:36:31,322 - INFO - CHILLGUYUSDT : rule 1 : failed
+2025-03-19 22:36:31,322 - INFO - ###########################################
+2025-03-19 22:36:31,322 - INFO - CHILLGUYUSDT : validation at frequency 12H
+2025-03-19 22:36:31,327 - INFO - CHILLGUYUSDT : rule 1 : failed
+2025-03-19 22:36:31,328 - INFO - ###########################################
+2025-03-19 22:36:31,328 - INFO - CHILLGUYUSDT : validation at frequency 1D
+2025-03-19 22:36:31,333 - INFO - CHILLGUYUSDT : rule 1 : failed
+2025-03-19 22:36:31,333 - INFO - XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+2025-03-19 22:36:31,336 - INFO - CHILLGUYUSDT : ratio 1.6592121346816082 ok for trade
+2025-03-19 22:36:31,336 - INFO - CHILLGUYUSDT : all rules has been validated
+2025-03-19 22:36:31,569 - INFO - ###########################################
+2025-03-19 22:36:31,569 - INFO - MAJORUSDT : validation at frequency 5m
+2025-03-19 22:36:31,577 - INFO - MAJORUSDT : rule 1 : failed
+2025-03-19 22:36:31,577 - INFO - ###########################################
+2025-03-19 22:36:31,578 - INFO - MAJORUSDT : validation at frequency 15m
+2025-03-19 22:36:31,585 - INFO - MAJORUSDT : rule 1 : passed
+2025-03-19 22:36:31,586 - INFO - MAJORUSDT : rule 2 : passed
+2025-03-19 22:36:31,586 - INFO - MAJORUSDT : rule 3 : passed
+2025-03-19 22:36:31,587 - INFO - MAJORUSDT : rule 4 : passed
+2025-03-19 22:36:31,588 - INFO - MAJORUSDT : rule 5 : passed
+2025-03-19 22:36:31,588 - INFO - ###########################################
+2025-03-19 22:36:31,588 - INFO - MAJORUSDT : validation at frequency 30m
+2025-03-19 22:36:31,595 - INFO - MAJORUSDT : rule 1 : failed
+2025-03-19 22:36:31,596 - INFO - ###########################################
+2025-03-19 22:36:31,596 - INFO - MAJORUSDT : validation at frequency 1H
+2025-03-19 22:36:31,604 - INFO - MAJORUSDT : rule 1 : failed
+2025-03-19 22:36:31,605 - INFO - ###########################################
+2025-03-19 22:36:31,605 - INFO - MAJORUSDT : validation at frequency 2H
+2025-03-19 22:36:31,610 - INFO - MAJORUSDT : rule 1 : failed
+2025-03-19 22:36:31,611 - INFO - ###########################################
+2025-03-19 22:36:31,611 - INFO - MAJORUSDT : validation at frequency 4H
+2025-03-19 22:36:31,616 - INFO - MAJORUSDT : rule 1 : failed
+2025-03-19 22:36:31,617 - INFO - ###########################################
+2025-03-19 22:36:31,617 - INFO - MAJORUSDT : validation at frequency 6H
+2025-03-19 22:36:31,624 - INFO - MAJORUSDT : rule 1 : failed
+2025-03-19 22:36:31,624 - INFO - ###########################################
+2025-03-19 22:36:31,625 - INFO - MAJORUSDT : validation at frequency 12H
+2025-03-19 22:36:31,630 - INFO - MAJORUSDT : rule 1 : passed
+2025-03-19 22:36:31,631 - INFO - MAJORUSDT : rule 2 : passed
+2025-03-19 22:36:31,631 - INFO - MAJORUSDT : rule 3 : failed
+2025-03-19 22:36:31,631 - INFO - ###########################################
+2025-03-19 22:36:31,631 - INFO - MAJORUSDT : validation at frequency 1D
+2025-03-19 22:36:31,638 - INFO - MAJORUSDT : rule 1 : failed
+2025-03-19 22:36:31,639 - INFO - XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+2025-03-19 22:36:31,640 - INFO - MAJORUSDT : ratio 1.4547937595481668 ok for trade
+2025-03-19 22:36:31,641 - INFO - MAJORUSDT : all rules has been validated
+2025-03-19 22:36:31,880 - INFO - ###########################################
+2025-03-19 22:36:31,881 - INFO - XIONUSDT : validation at frequency 5m
+2025-03-19 22:36:31,888 - INFO - XIONUSDT : rule 1 : failed
+2025-03-19 22:36:31,888 - INFO - ###########################################
+2025-03-19 22:36:31,888 - INFO - XIONUSDT : validation at frequency 15m
+2025-03-19 22:36:31,896 - INFO - XIONUSDT : rule 1 : failed
+2025-03-19 22:36:31,896 - INFO - ###########################################
+2025-03-19 22:36:31,896 - INFO - XIONUSDT : validation at frequency 30m
+2025-03-19 22:36:31,904 - INFO - XIONUSDT : rule 1 : passed
+2025-03-19 22:36:31,904 - INFO - XIONUSDT : rule 2 : passed
+2025-03-19 22:36:31,905 - INFO - XIONUSDT : rule 3 : passed
+2025-03-19 22:36:31,905 - INFO - XIONUSDT : rule 4 : passed
+2025-03-19 22:36:31,906 - INFO - XIONUSDT : rule 5 : passed
+2025-03-19 22:36:31,906 - INFO - ###########################################
+2025-03-19 22:36:31,907 - INFO - XIONUSDT : validation at frequency 1H
+2025-03-19 22:36:31,920 - INFO - XIONUSDT : rule 1 : failed
+2025-03-19 22:36:31,921 - INFO - ###########################################
+2025-03-19 22:36:31,921 - INFO - XIONUSDT : validation at frequency 2H
+2025-03-19 22:36:31,927 - INFO - XIONUSDT : rule 1 : failed
+2025-03-19 22:36:31,927 - INFO - ###########################################
+2025-03-19 22:36:31,927 - INFO - XIONUSDT : validation at frequency 4H
+2025-03-19 22:36:31,933 - INFO - XIONUSDT : rule 1 : failed
+2025-03-19 22:36:31,933 - INFO - ###########################################
+2025-03-19 22:36:31,933 - INFO - XIONUSDT : validation at frequency 6H
+2025-03-19 22:36:31,941 - INFO - XIONUSDT : rule 1 : failed
+2025-03-19 22:36:31,941 - INFO - ###########################################
+2025-03-19 22:36:31,941 - INFO - XIONUSDT : validation at frequency 12H
+2025-03-19 22:36:31,947 - INFO - XIONUSDT : rule 1 : failed
+2025-03-19 22:36:31,947 - INFO - ###########################################
+2025-03-19 22:36:31,948 - INFO - XIONUSDT : validation at frequency 1D
+2025-03-19 22:36:31,954 - INFO - XIONUSDT : rule 1 : failed
+2025-03-19 22:36:31,954 - INFO - XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+2025-03-19 22:36:31,956 - INFO - XIONUSDT : ratio 4.2109324758841815 ok for trade
+2025-03-19 22:36:31,956 - INFO - XIONUSDT : all rules has been validated
+2025-03-19 22:36:32,241 - INFO - ###########################################
+2025-03-19 22:36:32,241 - INFO - PENGUUSDT : validation at frequency 5m
+2025-03-19 22:36:32,249 - INFO - PENGUUSDT : rule 1 : failed
+2025-03-19 22:36:32,249 - INFO - ###########################################
+2025-03-19 22:36:32,249 - INFO - PENGUUSDT : validation at frequency 15m
+2025-03-19 22:36:32,256 - INFO - PENGUUSDT : rule 1 : failed
+2025-03-19 22:36:32,257 - INFO - ###########################################
+2025-03-19 22:36:32,257 - INFO - PENGUUSDT : validation at frequency 30m
+2025-03-19 22:36:32,263 - INFO - PENGUUSDT : rule 1 : failed
+2025-03-19 22:36:32,264 - INFO - ###########################################
+2025-03-19 22:36:32,264 - INFO - PENGUUSDT : validation at frequency 1H
+2025-03-19 22:36:32,271 - INFO - PENGUUSDT : rule 1 : passed
+2025-03-19 22:36:32,272 - INFO - PENGUUSDT : rule 2 : passed
+2025-03-19 22:36:32,273 - INFO - PENGUUSDT : rule 3 : passed
+2025-03-19 22:36:32,273 - INFO - PENGUUSDT : rule 4 : passed
+2025-03-19 22:36:32,274 - INFO - PENGUUSDT : rule 5 : passed
+2025-03-19 22:36:32,274 - INFO - ###########################################
+2025-03-19 22:36:32,274 - INFO - PENGUUSDT : validation at frequency 2H
+2025-03-19 22:36:32,280 - INFO - PENGUUSDT : rule 1 : failed
+2025-03-19 22:36:32,280 - INFO - ###########################################
+2025-03-19 22:36:32,280 - INFO - PENGUUSDT : validation at frequency 4H
+2025-03-19 22:36:32,286 - INFO - PENGUUSDT : rule 1 : failed
+2025-03-19 22:36:32,287 - INFO - ###########################################
+2025-03-19 22:36:32,287 - INFO - PENGUUSDT : validation at frequency 6H
+2025-03-19 22:36:32,293 - INFO - PENGUUSDT : rule 1 : failed
+2025-03-19 22:36:32,293 - INFO - ###########################################
+2025-03-19 22:36:32,293 - INFO - PENGUUSDT : validation at frequency 12H
+2025-03-19 22:36:32,299 - INFO - PENGUUSDT : rule 1 : failed
+2025-03-19 22:36:32,299 - INFO - ###########################################
+2025-03-19 22:36:32,299 - INFO - PENGUUSDT : validation at frequency 1D
+2025-03-19 22:36:32,306 - INFO - PENGUUSDT : rule 1 : failed
+2025-03-19 22:36:32,306 - INFO - XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+2025-03-19 22:36:32,308 - INFO - PENGUUSDT : ratio 1.2818883629316726 ok for trade
+2025-03-19 22:36:32,308 - INFO - PENGUUSDT : all rules has been validated
