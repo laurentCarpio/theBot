@@ -39,13 +39,10 @@ class ExtractTransform:
     def _get_candidat(self) -> pd:
         return self._df_candidat
     
-    def _get_candidat_freq(self) -> str:
-        return self._candidat_freq
-    
     def display_chart(self):
         self._myGraph.show_chart()
 
-    def find_in_first_step(self) -> bool:
+    def find_candidat(self) -> bool:
         for index, freq in enumerate(const.MY_FREQUENCY_LIST):
             self._logger.info('###########################################')
             self._logger.info(f'{self._symbol} : validation at frequency {freq}')
@@ -62,22 +59,6 @@ class ExtractTransform:
                 self._logger.debug(f'{self._symbol} : not enough data at this {freq}')
         
         return False if self._get_candidat().empty else True
-        
-    def find_in_next_step(self) -> pd:
-        self._logger.info('XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX')
-        #next_freq = get_frequency_for_next_step(self._get_candidat_freq())
-        #self._logger.info(f'{self._symbol} : validation step 2 for frequency {next_freq}')
-        #self.set_data(self._mybit.get_candles(self._symbol, next_freq))
-        #self._prepare_data_for(freq_to_resample(next_freq))
-        
-        # for debug
-        #self._myGraph._show_charts(self.get_data(), self._symbol, next_freq)
-
-        #if self._myStrat.validate_step2(self._df_data.iloc[int(const.STRATEGY_WINDOW/2):].copy()):
-        #    self._myGraph._set_above_candidat(self.get_data(), next_freq)
-        return self.prep_row()
-        #else:
-        #    return pd.DataFrame()
                      
     def _prepare_data_for(self, resample: str) -> bool:
         df1 = self.get_data().copy()
@@ -186,30 +167,27 @@ class ExtractTransform:
         return True
 
     def prep_row(self) -> pd:
-        # we need the _df_main to prepare the row for trade not the _df_next
-        df1 = self._get_candidat()
-        # build the eligible row from the last crossing_hma row
-        hma_last_index = df1[df1['crossing_hma'] == True].index[-1] 
-        interval_index = hma_last_index - pd.Timedelta(df1.index.freq * const.MAX_MIN_VALUE_WINDOW)
-        df_row = df1.loc[[hma_last_index]]
-        df_row = df_row.drop(['crossing_kcl',
-                              'crossing_kcu',
-                             'touching_bbu',
-                              'crossing_hma'],
-                             axis=1)
+        df1 = self._get_candidat().copy()        
+        df1 = df1.drop(['crossing_kcl','crossing_kcu','touching_bbu','crossing_hma'],axis=1)
+        
+        # get the last row 
+        df_row = df1.iloc[-1].copy()
         df_row['highest'] = 0.0
         df_row['lowest'] = 0.0
+        
         # the estimate profit is the difference between the bbm and the close price
-        estimate_profit = abs(df_row['bbm'].iloc[0] - df_row['close'].iloc[0])
+        estimate_profit = abs(df_row['bbm'] - df_row['close'])
 
         if df1["side"].eq(NEW_BUY).any():
             df_row['side'] = NEW_BUY
-            df_row['lowest'] = (df1.loc[interval_index:hma_last_index, 'low']).min()
+            df_row['lowest'] = df1.iloc[-(int(const.MAX_MIN_VALUE_WINDOW)):, df1.columns.get_loc('low')].min()
             df_row['presetStopLossPrice'] = df_row['lowest'] - (df_row['lowest'] * const.STOP_LOST)
+            
+            # the ratio is calculated with the premise the buying price = the close price 
             df_row['ratio'] = estimate_profit / (df_row['close'] - df_row['presetStopLossPrice'])
         else:
             df_row['side'] = NEW_SELL
-            df_row['highest'] = (df1.loc[interval_index:hma_last_index, 'high']).max()
+            df_row['highest'] = df1.iloc[-(int(const.MAX_MIN_VALUE_WINDOW)):, df1.columns.get_loc('high')].max()
             df_row['presetStopLossPrice'] = df_row['highest'] + (df_row['highest'] * const.STOP_LOST)
             df_row['ratio'] = estimate_profit / (df_row['presetStopLossPrice'] - df_row['close'])
         df_row['marginCoin'] = const.MARGIN_COIN_USED
@@ -219,13 +197,17 @@ class ExtractTransform:
         df_row['timeInForceValue'] = TIME_IN_FORCE_TYPES[1]
         df_row['custom_id'] = get_client_oid()  # order_1
         df_row['reduceOnly'] = 'false'
+
+        # bbm is the first take profit at 50% usually 
         df_row['presetTakeProfitPrice'] = df_row['bbm']
         
-        if df_row['ratio'].iloc[0] > const.ACCEPTABLE_RATIO:
-            self._logger.info(f'{self._symbol} : ratio {df_row['ratio'].iloc[0]} ok for trade')
+        if df_row['ratio'] > const.ACCEPTABLE_RATIO:
+            self._logger.info(f"{self._symbol} :ratio {df_row['ratio']} ok for trade")
+            self._logger.info('XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX')
             return df_row
         else:
-            self._logger.info(f'{self._symbol} : ratio {df_row['ratio'].iloc[0]} failed fortrade')
+            self._logger.info(f"{self._symbol} :ratio {df_row['ratio']} failed for trade")
+            self._logger.info('XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX')
             return pd.DataFrame()
 
 
