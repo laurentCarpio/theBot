@@ -8,6 +8,7 @@ class TheStrategy:
     # the strategy applied
     _logger = None
     _symbol = None
+    _github_test = None
 
     def __init__(self, logger: logging.Logger, symbol: str):
         self._logger = logger
