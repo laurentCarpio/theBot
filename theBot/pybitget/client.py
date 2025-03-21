@@ -118,7 +118,7 @@ class Client(object):
             logger.error("pls check args")
             return False
 
-    def mix_get_merge_depth(self, symbol, productType, precision='scale0',limit=20):
+    def mix_get_merge_depth(self, symbol, productType, precision='scale0', limit=20):
         """
         Get Depth: https://bitgetlimited.github.io/apidoc/en/mix/#get-depth
 
