@@ -53,6 +53,8 @@ class ExtractTransform:
                     self._logger.debug(f'{self._symbol} : good candidat at this {freq}')
                     self._set_candidat(self.get_data(), freq)
                     self._myGraph.set_candidat(self.get_data(), freq)
+                    # for debug only 
+                    # self.display_chart()
                 else:
                     self._logger.debug(f'{self._symbol} : bad candidat at this {freq}')
             else:
@@ -189,7 +191,10 @@ class ExtractTransform:
             df_row['side'] = NEW_SELL
             df_row['highest'] = df1.iloc[-(int(const.MAX_MIN_VALUE_WINDOW)):, df1.columns.get_loc('high')].max()
             df_row['presetStopLossPrice'] = df_row['highest'] + (df_row['highest'] * const.STOP_LOST)
+
+            # the ratio is calculated with the premise the selling price = the close price 
             df_row['ratio'] = estimate_profit / (df_row['presetStopLossPrice'] - df_row['close'])
+        
         df_row['marginCoin'] = const.MARGIN_COIN_USED
         df_row['size'] = 0.0
         df_row['price'] = 0.0

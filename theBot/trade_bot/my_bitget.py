@@ -25,7 +25,7 @@ class MyBitget:
     def get_all_symbol(self) -> pd:
         return self._all_symbols['symbol']
     
-    def getAllTickers(self, do_call=False, do_save=False, do_one=False) -> pd:
+    def getAllTickers(self, do_call=False, do_save=False, do_one=True) -> pd:
         try:
             if do_call:
                 tickers = self._client.mix_get_all_tickers(const.PRODUCT_TYPE_USED)
@@ -36,7 +36,7 @@ class MyBitget:
                 return df
             else:
                 if do_one:
-                    return pd.DataFrame(pd.Series(['CRVUSDT'], name='symbol'))
+                    return pd.DataFrame(pd.Series(['BANANAUSDT'], name='symbol'))
                 else:
                     df = pd.read_csv(f'{const.DATA_FOLDER}/all_tickers.csv', index_col=0)
                     self._logger.debug('getting tickers from the debug directory')
@@ -92,7 +92,18 @@ class MyBitget:
         except BitgetAPIException as e:
             self._logger.error(f'{e.code}: {e.message} to get contract')
             return None
-        
+    
+    def get_usdt_per_trade(self) -> float:
+        try:
+            account = self._client.mix_get_accounts(const.PRODUCT_TYPE_USED)
+            self._total_usdt = float(account.get('data')[0].get('available'))
+            return self._total_usdt * float(const.PERCENTAGE_VALUE_PER_TRADE)
+        except BitgetAPIException as e:
+            self._logger.error(f'getting BitgetAPIException {e} to get_usdt_available')
 
-
-
+    def get_bids_and_asks(self, symbol: str) -> pd:
+        try:
+            bids_asks = self._client.mix_get_merge_depth(symbol,const.PRODUCT_TYPE_USED)
+            return bids_asks
+        except BitgetAPIException as e:
+            self._logger.error(f'getting BitgetAPIException {e} to get_bids_asks')

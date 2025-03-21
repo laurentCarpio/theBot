@@ -118,7 +118,7 @@ class Client(object):
             logger.error("pls check args")
             return False
 
-    def mix_get_merge_depth(self, symbol, productType, precision='scale0',limit=100):
+    def mix_get_merge_depth(self, symbol, productType, precision='scale0',limit=20):
         """
         Get Depth: https://bitgetlimited.github.io/apidoc/en/mix/#get-depth
 
@@ -138,7 +138,7 @@ class Client(object):
             params["productType"] = productType
             params["precision"] = precision
             params["limit"] = limit
-            return self._request_with_params(GET, MIX_MARKET_V1_URL + '/merge-depth', params)
+            return self._request_with_params(GET, MIX_MARKET_V2_URL + '/merge-depth', params)
         else:
             logger.error("pls check args")
             return False
@@ -379,7 +379,7 @@ class Client(object):
         params = {}
         if productType:
             params['productType'] = productType
-            return self._request_with_params(GET, MIX_ACCOUNT_V1_URL + '/accounts', params)
+            return self._request_with_params(GET, MIX_ACCOUNT_V2_URL + '/accounts', params)
         else:
             logger.error("pls check args")
             return False
