@@ -1,5 +1,5 @@
 import pandas as pd
-import logging.config
+from trade_bot.utils.trade_logger import logger
 import time
 import trade_bot.utils.enums as const
 from trade_bot.utils.frequency_utils import getFreq_in_ms
@@ -9,28 +9,29 @@ from pybitget import Client
 
 
 class MyBitget:
-    _logger = None
     _all_symbols = None
     _client = None
 
-    def __init__(self, logger: logging.Logger):
+    def __init__(self):
         self._client = Client(const.API_KEY,
                              const.SECRET_KEY,
                              const.API_PASSPHRASE,
                              verbose=True)
         
-        self._logger = logger
         self._all_symbols = self.getAllTickers()    
 
+    def get_client(self) -> Client:
+        return self._client
+    
     def get_all_symbol(self) -> pd:
         return self._all_symbols['symbol']
     
-    def getAllTickers(self, do_call=False, do_save=False, do_one=True) -> pd:
+    def getAllTickers(self, do_call=True, do_save=True, do_one=False) -> pd:
         try:
             if do_call:
                 tickers = self._client.mix_get_all_tickers(const.PRODUCT_TYPE_USED)
                 df = pd.DataFrame(tickers.get('data'))
-                self._logger.debug('getting all tickers from bitget')
+                logger.debug('getting all tickers from bitget')
                 if do_save:
                     df.to_csv(f'{const.DATA_FOLDER}/all_tickers.csv', index=True)
                 return df
@@ -39,15 +40,15 @@ class MyBitget:
                     return pd.DataFrame(pd.Series(['BANANAUSDT'], name='symbol'))
                 else:
                     df = pd.read_csv(f'{const.DATA_FOLDER}/all_tickers.csv', index_col=0)
-                    self._logger.debug('getting tickers from the debug directory')
+                    logger.debug('getting tickers from the debug directory')
                     return df
         except BitgetAPIException as e:
-            self._logger.error(f'{e.code}: {e.message} for getAllTickers')
+            logger.error(f'{e.code}: {e.message} for getAllTickers')
         except FileNotFoundError as e:
-            self._logger.error(f'{e.args} to read or write files') 
+            logger.error(f'{e.args} to read or write files') 
             return None
 
-    def get_candles(self, _symbol: str, granularity: str, do_call=False, do_save=False) -> pd:
+    def get_candles(self, _symbol: str, granularity: str, do_call=True, do_save=False) -> pd:
         try:
             if do_call:
                 # Get the current timestamp in milliseconds
@@ -58,7 +59,7 @@ class MyBitget:
                 columns = ['Date', 'open', 'high', 'low', 'close',
                            'volume', 'volume Currency']
                 df = pd.DataFrame(_candles.get('data'), columns=columns)
-                self._logger.debug(f'{_symbol} : getting ohclv data')
+                logger.debug(f'{_symbol} : getting ohclv data')
                 if do_save:
                     # create a file for each ticker
                     df.to_csv(f'{const.DATA_FOLDER}/ticker_data_{granularity}/{_symbol}.csv',
@@ -70,10 +71,10 @@ class MyBitget:
                                  index_col=0)
                 return df
         except BitgetAPIException as e:
-            self._logger.error(f'{e.code}: {e.message} for get_trading_candles')
+            logger.error(f'{e.code}: {e.message} for get_trading_candles')
             return pd.DataFrame() # return empty df
         except FileNotFoundError as e:
-            self._logger.error(f'{e.args} to read or write files for {_symbol}')
+            logger.error(f'{e.args} to read or write files for {_symbol}')
             return pd.DataFrame() # return empty df
 
     def get_contract(self, _symbol: str) -> pd:
@@ -90,7 +91,7 @@ class MyBitget:
                       'minLever','maxLever','posLimit','maintainTime','openTime'],axis=1)
             return df
         except BitgetAPIException as e:
-            self._logger.error(f'{e.code}: {e.message} to get contract')
+            logger.error(f'{e.code}: {e.message} to get contract')
             return None
     
     def get_usdt_per_trade(self) -> float:
@@ -101,9 +102,9 @@ class MyBitget:
         except BitgetAPIException as e:
             self._logger.error(f'getting BitgetAPIException {e} to get_usdt_available')
 
-    def get_bids_and_asks(self, symbol: str) -> pd:
+    def get_bids_and_asks(self, symbol: str, precision='scale1', limit=50) -> pd:
         try:
-            bids_asks = self._client.mix_get_merge_depth(symbol,const.PRODUCT_TYPE_USED)
+            bids_asks = self._client.mix_get_merge_depth(symbol,const.PRODUCT_TYPE_USED, precision='scale1', limit=100)
             return bids_asks
-        except BitgetAPIException as e:
-            self._logger.error(f'getting BitgetAPIException {e} to get_bids_asks')
+        except BitgetAPIException as e: 
+            logger.error(f'getting BitgetAPIException {e} to get_bids_asks')

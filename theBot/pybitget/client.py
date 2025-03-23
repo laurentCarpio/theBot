@@ -118,7 +118,7 @@ class Client(object):
             logger.error("pls check args")
             return False
 
-    def mix_get_merge_depth(self, symbol, productType, precision='scale0', limit=20):
+    def mix_get_merge_depth(self, symbol, productType, precision, limit):
         """
         Get Depth: https://bitgetlimited.github.io/apidoc/en/mix/#get-depth
 
@@ -203,7 +203,7 @@ class Client(object):
             logger.error("pls check args")
             return False
 
-    def mix_get_candles(self, symbol, productType, granularity, startTime, endTime, kLineType='market', limit=100):
+    def mix_get_candles(self, symbol, productType, granularity, startTime, endTime, kLineType='mark', limit=100):
         """
         Get Candle Data: https://bitgetlimited.github.io/apidoc/en/mix/#get-candle-data
         Limit rule: 20 times/1s (IP)

@@ -1,16 +1,15 @@
 import pandas as pd
-import logging.config
+from trade_bot.utils.trade_logger import logger
 import pandas_ta as ta
 from pybitget.enums import NEW_BUY, NEW_SELL, ORDER_TYPE_LIMIT, TIME_IN_FORCE_TYPES
 from trade_bot.display.my_graph import MyGraph
 from trade_bot.utils.frequency_utils import freq_to_resample, get_frequency_for_next_step
 from trade_bot.utils.tools import get_client_oid
 from trade_bot.my_bitget import MyBitget
-from trade_bot.the_strategy import TheStrategy
+from theBot.trade_bot.my_strategy import MyStrategy
 import trade_bot.utils.enums as const
 
 class ExtractTransform:
-    _logger = None
     _symbol = None
     _df_data = pd.DataFrame()
     _mybit = None
@@ -18,14 +17,20 @@ class ExtractTransform:
     _myGraph = None
     _df_candidat = pd.DataFrame()
     _candidat_freq = None
+    _df_row = pd.DataFrame()
 
-    def __init__(self, logger: logging.Logger, symbol: str, mybit: MyBitget):
-        self._logger = logger
+    def __init__(self, symbol: str, mybit: MyBitget):
         self._symbol = symbol
         self._mybit = mybit
-        self._myStrat = TheStrategy(logger, symbol)
+        self._myStrat = MyStrategy(symbol)
         self._myGraph = MyGraph(symbol)
 
+    def _set_row(self, row: pd):
+        self._df_row = row
+
+    def get_row(self) -> pd:
+        return self._df_row
+    
     def set_data(self, df1: pd):
         self._df_data = df1
 
@@ -44,35 +49,35 @@ class ExtractTransform:
 
     def find_candidat(self) -> bool:
         for index, freq in enumerate(const.MY_FREQUENCY_LIST):
-            self._logger.info('###########################################')
-            self._logger.info(f'{self._symbol} : validation at frequency {freq}')
+            logger.info('###########################################')
+            logger.info(f'{self._symbol} : validation at frequency {freq}')
             self.set_data(self._mybit.get_candles(self._symbol, freq))
             if self._prepare_data_for(freq_to_resample(freq)):
                 if self._myStrat.validate_step1(self._df_data.iloc[const.STRATEGY_WINDOW:].copy()):
                     # the next good candidat replace the last one found
-                    self._logger.debug(f'{self._symbol} : good candidat at this {freq}')
+                    logger.debug(f'{self._symbol} : good candidat at this {freq}')
                     self._set_candidat(self.get_data(), freq)
                     self._myGraph.set_candidat(self.get_data(), freq)
                     # for debug only 
                     # self.display_chart()
                 else:
-                    self._logger.debug(f'{self._symbol} : bad candidat at this {freq}')
+                    logger.debug(f'{self._symbol} : bad candidat at this {freq}')
             else:
-                self._logger.debug(f'{self._symbol} : not enough data at this {freq}')
+                logger.debug(f'{self._symbol} : not enough data at this {freq}')
         
         return False if self._get_candidat().empty else True
                      
     def _prepare_data_for(self, resample: str) -> bool:
         df1 = self.get_data().copy()
         if len(df1.columns) < 7 or len(df1) < const.MIN_CANDLES_FOR_INDICATORS:
-            self._logger.debug(f'{self._symbol} : empty dataframe or not enough candles to validate the strategy')
+            logger.debug(f'{self._symbol} : empty dataframe or not enough candles to validate the strategy')
             return False
         else :
             df1 = df1.drop(['volume Currency'], axis= 1)
             df1['Date'] = pd.to_datetime(pd.to_numeric(df1['Date']), unit="ms")
             df1.set_index("Date", inplace=True)
             df1 = df1.resample(resample).ffill()
-            self._logger.debug(f'{self._symbol} : ohclv processed at {df1.index.freq} index frequency')
+            logger.debug(f'{self._symbol} : ohclv processed at {df1.index.freq} index frequency')
             for col in df1.columns[:]:
                 df1[col] = pd.to_numeric(df1[col])
             df1['symbol'] = self._symbol
@@ -118,7 +123,7 @@ class ExtractTransform:
                                 'KCUe_20_2.0': 'kcu'},
                        inplace=True)
 
-        self._logger.debug(f'{self._symbol} : all indicators has been calculated')
+        logger.debug(f'{self._symbol} : all indicators has been calculated')
         return self._add_intersection_dot(df1)
 
     def _add_intersection_dot(self, df1: pd) -> bool:
@@ -164,11 +169,11 @@ class ExtractTransform:
         else:
             df1['side'] = NEW_SELL
 
-        self._logger.debug(f'{self._symbol} all the crossing kc(l,u) , bb(l,u) and hma have been added')
+        logger.debug(f'{self._symbol} all the crossing kc(l,u) , bb(l,u) and hma have been added')
         self.set_data(df1)
         return True
 
-    def prep_row(self) -> pd:
+    def prep_row(self) -> bool:
         df1 = self._get_candidat().copy()        
         df1 = df1.drop(['crossing_kcl','crossing_kcu','touching_bbu','crossing_hma'],axis=1)
         
@@ -178,22 +183,18 @@ class ExtractTransform:
         df_row['lowest'] = 0.0
         
         # the estimate profit is the difference between the bbm and the close price
-        estimate_profit = abs(df_row['bbm'] - df_row['close'])
+        df_row['estim_profit'] = abs(df_row['bbm'] - df_row['close'])
 
         if df1["side"].eq(NEW_BUY).any():
+            self._set_side(NEW_BUY)
             df_row['side'] = NEW_BUY
             df_row['lowest'] = df1.iloc[-(int(const.MAX_MIN_VALUE_WINDOW)):, df1.columns.get_loc('low')].min()
             df_row['presetStopLossPrice'] = df_row['lowest'] - (df_row['lowest'] * const.STOP_LOST)
-            
-            # the ratio is calculated with the premise the buying price = the close price 
-            df_row['ratio'] = estimate_profit / (df_row['close'] - df_row['presetStopLossPrice'])
         else:
+            self._set_side(NEW_SELL)
             df_row['side'] = NEW_SELL
             df_row['highest'] = df1.iloc[-(int(const.MAX_MIN_VALUE_WINDOW)):, df1.columns.get_loc('high')].max()
             df_row['presetStopLossPrice'] = df_row['highest'] + (df_row['highest'] * const.STOP_LOST)
-
-            # the ratio is calculated with the premise the selling price = the close price 
-            df_row['ratio'] = estimate_profit / (df_row['presetStopLossPrice'] - df_row['close'])
         
         df_row['marginCoin'] = const.MARGIN_COIN_USED
         df_row['size'] = 0.0
@@ -205,16 +206,45 @@ class ExtractTransform:
 
         # bbm is the first take profit at 50% usually 
         df_row['presetTakeProfitPrice'] = df_row['bbm']
-        
-        if df_row['ratio'] > const.ACCEPTABLE_RATIO:
-            self._logger.info(f"{self._symbol} :ratio {df_row['ratio']} ok for trade")
-            self._logger.info('XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX')
-            return df_row
-        else:
-            self._logger.info(f"{self._symbol} :ratio {df_row['ratio']} failed for trade")
-            self._logger.info('XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX')
-            return pd.DataFrame()
 
+        self._set_row(df_row)
+        self._set_price_and_validate_ratio()
+        
+    def _set_price_and_validate_ratio(self) -> bool:
+        df0 = self._get_row()
+        bids_asks = self._mybit.get_bids_and_asks(self._symbol)
+        
+        if df0['side'] == NEW_BUY:
+            df1 = pd.DataFrame(bids_asks.get('data')['asks'])
+        else:
+            df1 = pd.DataFrame(bids_asks.get('data')['bids'])
+        
+        #######################################################################################
+        # take the price at position 5 
+        # the rule for now is to take the price at position 5 and check with this 
+        # price if we have a ratio >= 1.2 
+        ########################################################################################
+        df0['price']  = df1.iloc[5,0]
+        logger.info(f'{self._symbol} : price for trade is : {price}')
+
+        if df0['side'] == NEW_BUY:
+            # the ratio is calculated with the premise the buying price (asks list)
+            df0['ratio'] = df0['estim_profit'] / (df0['price'] - df0['presetStopLossPrice'])
+        else:
+            # the ratio is calculated with the premise the selling price (bids list)
+            df0['ratio'] = df0['estim_profit']  / (df0['presetStopLossPrice'] - df0['price'])
+
+        if df0['ratio'] > const.ACCEPTABLE_RATIO:
+            logger.info(f"{self._symbol} :ratio {df0['ratio']} ok for trade")
+            logger.info('XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX')
+            self._set_row(df0)
+            return True
+        else:
+            logger.info(f"{self._symbol} :ratio {df0['ratio']} failed for trade")
+            logger.info('XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX')
+            self._set_row(pd.DataFrame())
+            return False
+            
 
 
 

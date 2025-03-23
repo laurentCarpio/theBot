@@ -1,17 +1,15 @@
 import pandas as pd
-import logging.config
+from trade_bot.utils.trade_logger import logger
 import trade_bot.utils.enums as const
 from pybitget.enums import NEW_BUY, NEW_SELL
 
 
-class TheStrategy:
+class MyStrategy:
     # the strategy applied
-    _logger = None
     _symbol = None
     _github_test = None
 
-    def __init__(self, logger: logging.Logger, symbol: str):
-        self._logger = logger
+    def __init__(self, symbol: str):
         self._symbol = symbol
 
     def validate_step2(self, df0: pd) -> bool:
@@ -28,7 +26,7 @@ class TheStrategy:
         #               : one crossing kcl or one touching bbl is ok if the touched one is higher than the lowest of the second one        
         #########################################################################################################################
         if df0["crossing_hma"].any():
-            self._logger.error(f'{self._symbol} Above frequency verification failed')
+            logger.error(f'{self._symbol} Above frequency verification failed')
             return False
         
         if df0['side'].iloc[0] == NEW_SELL:
@@ -87,10 +85,10 @@ class TheStrategy:
                 if self._rule3(df1):
                     if self._rule4(df1):
                         if self._rule5(df1):
-                            self._logger.debug(f'{self._symbol} : all rules : passed')
+                            logger.debug(f'{self._symbol} : all rules : passed')
                             return True
 
-        self._logger.debug(f'{self._symbol} : one rule failed')
+        logger.debug(f'{self._symbol} : one rule failed')
         return False
 
     def _rule1(self, df1: pd) -> bool:
@@ -101,13 +99,13 @@ class TheStrategy:
             if df2["touching_bbl"].any():
                 df3 = df2[df2.index > df2["touching_bbl"].idxmax()]
                 if df3["crossing_hma"].any():
-                    self._logger.info(f'{self._symbol} : rule 1 : passed')
+                    logger.info(f'{self._symbol} : rule 1 : passed')
                     return True
                 else:
-                    self._logger.info(f'{self._symbol} : rule 1 : failed')
+                    logger.info(f'{self._symbol} : rule 1 : failed')
                     return False
             else:
-                self._logger.info(f'{self._symbol} : rule 1 : failed')
+                logger.info(f'{self._symbol} : rule 1 : failed')
                 return False
 
         # or we have at leat one crossing_kcu, one touching bbu and one crossing hma 
@@ -117,16 +115,16 @@ class TheStrategy:
             if df2["touching_bbu"].any():
                 df3 = df2[df2.index >= df2["touching_bbu"].idxmax()]
                 if df3["crossing_hma"].any():
-                    self._logger.info(f'{self._symbol} : rule 1 : passed')
+                    logger.info(f'{self._symbol} : rule 1 : passed')
                     return True
                 else:
-                    self._logger.info(f'{self._symbol} : rule 1 : failed')
+                    logger.info(f'{self._symbol} : rule 1 : failed')
                     return False
             else:
-                self._logger.info(f'{self._symbol} : rule 1 : failed')
+                logger.info(f'{self._symbol} : rule 1 : failed')
                 return False
         else:
-            self._logger.info(f'{self._symbol} : rule 1 : failed')
+            logger.info(f'{self._symbol} : rule 1 : failed')
             return False
 
     def _rule2(self, df1: pd) -> bool:
@@ -135,17 +133,17 @@ class TheStrategy:
         next_index = hma_last_index + pd.Timedelta(df1.index.freq)
         df_after_hma = df1.loc[next_index:]
         if df_after_hma.empty:
-            self._logger.info(f'{self._symbol} : rule 2 : passed')
+            logger.info(f'{self._symbol} : rule 2 : passed')
             return True
         else:
             if df_after_hma["crossing_kcu"].any() or df_after_hma["crossing_kcl"].any():
-                self._logger.info(f'{self._symbol} : rule 2 : failed')
+                logger.info(f'{self._symbol} : rule 2 : failed')
                 return False
             elif df_after_hma["touching_bbu"].any() or df_after_hma["touching_bbl"].any():
-                self._logger.info(f'{self._symbol} : rule 2 : failed')
+                logger.info(f'{self._symbol} : rule 2 : failed')
                 return False
             else:
-                self._logger.info(f'{self._symbol} : rule 2 : passed')
+                logger.info(f'{self._symbol} : rule 2 : passed')
                 return True
 
     def _rule3(self, df1: pd) -> bool:
@@ -159,11 +157,11 @@ class TheStrategy:
         # divide the delta by the scale of the index frequency (Daily, 1h, 15 min, 5 min, etc...)
         # to have the number of candles to compare with the nbr_of_candles_allowed_between_hma_&_bb(l,u)
         if delta.value / df1.index.freq.nanos <= const.MAX_CANDLES_BETWEEN_HMA_AND_BB:
-            self._logger.debug(f'we have {delta.value/df1.index.freq.nanos} candles between hma_&_bb(l,u)')
-            self._logger.info(f'{self._symbol} : rule 3 : passed')
+            logger.debug(f'we have {delta.value/df1.index.freq.nanos} candles between hma_&_bb(l,u)')
+            logger.info(f'{self._symbol} : rule 3 : passed')
             return True
         else :
-            self._logger.info(f'{self._symbol} : rule 3 : failed')
+            logger.info(f'{self._symbol} : rule 3 : failed')
             return False
 
     def _rule4(self, df1: pd) -> bool:
@@ -171,59 +169,59 @@ class TheStrategy:
         if df1["crossing_kcl"].any():
             # we are in a trading short opportunity
             hma_low_price = df1.loc[hma_last_index, 'low']
-            self._logger.debug(f'hma_low price is {hma_low_price} for {self._symbol}')
+            logger.debug(f'hma_low price is {hma_low_price} for {self._symbol}')
             bbl_last_index = df1[df1['touching_bbl'] == True].index[-1]
             bbl_low_price = df1.loc[bbl_last_index, 'low']
-            self._logger.debug(f'the low price at the bbl is {bbl_low_price} for {self._symbol}')
+            logger.debug(f'the low price at the bbl is {bbl_low_price} for {self._symbol}')
             if hma_low_price > bbl_low_price:
-                self._logger.info(f'{self._symbol} : rule 4 : passed')
+                logger.info(f'{self._symbol} : rule 4 : passed')
                 return True
             else:
-                self._logger.info(f'{self._symbol} : rule 4 : failed')
+                logger.info(f'{self._symbol} : rule 4 : failed')
                 return False
         else:
             # we are in a trading long opportunity
             hma_high_price = df1.loc[hma_last_index, 'high']
-            self._logger.debug(f'hma high price is {hma_high_price} for {self._symbol}')
+            logger.debug(f'hma high price is {hma_high_price} for {self._symbol}')
             bbu_last_index = df1[df1['touching_bbu'] == True].index[-1]
             bbu_high_price = df1.loc[bbu_last_index, 'high']
-            self._logger.debug(f'the high price at the bbu is {bbu_high_price} for {self._symbol}')
+            logger.debug(f'the high price at the bbu is {bbu_high_price} for {self._symbol}')
             if hma_high_price < bbu_high_price:
-                self._logger.info(f'{self._symbol} : rule 4 : passed')
+                logger.info(f'{self._symbol} : rule 4 : passed')
                 return True
             else:
-                self._logger.info(f'{self._symbol} : rule 4 :failed')
+                logger.info(f'{self._symbol} : rule 4 :failed')
                 return False
 
     def _rule5(self, df1: pd) -> bool:
         hma_last_index = df1[df1['crossing_hma'] == True].index[-1]
         hma_crossing_price = df1.loc[hma_last_index, 'hma']
-        self._logger.debug(f'the crossing hma price is {hma_crossing_price} for {self._symbol}') 
+        logger.debug(f'the crossing hma price is {hma_crossing_price} for {self._symbol}') 
         boosted_hma_crossing_price = hma_crossing_price * const.ACCEPTABLE_MARGE
-        self._logger.debug(f'105 % of crossing hma price is {boosted_hma_crossing_price} for {self._symbol}') 
+        logger.debug(f'105 % of crossing hma price is {boosted_hma_crossing_price} for {self._symbol}') 
 
         if df1["crossing_kcl"].any():
             # we are in a trading short opportunity
             bbl_last_index = df1[df1['touching_bbl'] == True].index[-1]
             df_interval = df1.loc[bbl_last_index:hma_last_index, 'low']
-            self._logger.debug(f'interval is between {bbl_last_index} and {hma_last_index} for {self._symbol}')
+            logger.debug(f'interval is between {bbl_last_index} and {hma_last_index} for {self._symbol}')
             lowest_price = df_interval.min()
             if lowest_price < boosted_hma_crossing_price :
-                self._logger.info(f'{self._symbol} : rule 5 : failed')
+                logger.info(f'{self._symbol} : rule 5 : failed')
                 return False
             else:
-                self._logger.info(f'{self._symbol} : rule 5 : passed')
+                logger.info(f'{self._symbol} : rule 5 : passed')
                 return True
         else:
             bbu_last_index = df1[df1['touching_bbu'] == True].index[-1]
             df_interval = df1.loc[bbu_last_index:hma_last_index, 'high']
-            self._logger.debug(f'interval is between {bbu_last_index} and {hma_last_index} for {self._symbol}')
+            logger.debug(f'interval is between {bbu_last_index} and {hma_last_index} for {self._symbol}')
             highest_price = df_interval.max() 
-            self._logger.debug(f'the highest price in the interval is {highest_price} for {self._symbol}')       
+            logger.debug(f'the highest price in the interval is {highest_price} for {self._symbol}')       
             if highest_price > boosted_hma_crossing_price:
-                self._logger.info(f'{self._symbol} : rule 5 : failed')
+                logger.info(f'{self._symbol} : rule 5 : failed')
                 return False
             else:
-                self._logger.info(f'{self._symbol} : rule 5 : passed')
+                logger.info(f'{self._symbol} : rule 5 : passed')
                 return True
 
