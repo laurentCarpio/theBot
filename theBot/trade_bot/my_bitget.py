@@ -26,7 +26,7 @@ class MyBitget:
     def get_all_symbol(self) -> pd:
         return self._all_symbols['symbol']
     
-    def getAllTickers(self, do_call=True, do_save=True, do_one=False) -> pd:
+    def getAllTickers(self, do_call=False, do_save=False, do_one=True) -> pd:
         try:
             if do_call:
                 tickers = self._client.mix_get_all_tickers(const.PRODUCT_TYPE_USED)
@@ -37,7 +37,7 @@ class MyBitget:
                 return df
             else:
                 if do_one:
-                    return pd.DataFrame(pd.Series(['BANANAUSDT'], name='symbol'))
+                    return pd.DataFrame(pd.Series(['BTCUSDT'], name='symbol'))
                 else:
                     df = pd.read_csv(f'{const.DATA_FOLDER}/all_tickers.csv', index_col=0)
                     logger.debug('getting tickers from the debug directory')
@@ -48,7 +48,7 @@ class MyBitget:
             logger.error(f'{e.args} to read or write files') 
             return None
 
-    def get_candles(self, _symbol: str, granularity: str, do_call=True, do_save=False) -> pd:
+    def get_candles(self, _symbol: str, granularity: str, do_call=False, do_save=False) -> pd:
         try:
             if do_call:
                 # Get the current timestamp in milliseconds
@@ -67,8 +67,8 @@ class MyBitget:
                 return df
             else:
                 # read each ticker file
-                df = pd.read_csv(f'{const.DATA_FOLDER}/ticker_data_{granularity}/{_symbol}.csv',
-                                 index_col=0)
+                #df = pd.read_csv(f'{const.DATA_FOLDER}/ticker_data_{granularity}/{_symbol}.csv',index_col=0)
+                df = pd.read_csv(f'trade_bot/data/ticker_data_for_backtest/BTC_1hour_2.csv')
                 return df
         except BitgetAPIException as e:
             logger.error(f'{e.code}: {e.message} for get_trading_candles')

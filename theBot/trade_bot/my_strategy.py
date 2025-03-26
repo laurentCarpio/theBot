@@ -70,7 +70,8 @@ class MyStrategy:
         #########################################################################################################################
         #    Rule 1 : at least one crossing_kc(l,u) one touching bb(l,u) and one crossing hma both in that order
         #########################################################################################################################
-        #    Rule 2 : Cannot have kc(u,l) and / or bb(u,l) after the last hma
+        #    Rule 2 : Cannot have crossing_kc(l,u) or touching_bb(l,u) after the last_hma
+        #           : Cannot have crossing_bbm at the last_hma or after it 
         #########################################################################################################################
         #    Rule 3 : not more than 4 candles between the last testing_bb(u,l) and the crossing_hma
         #########################################################################################################################
@@ -127,11 +128,14 @@ class MyStrategy:
             logger.info(f'{self._symbol} : rule 1 : failed')
             return False
 
-    def _rule2(self, df1: pd) -> bool:
-        hma_last_index = df1[df1['crossing_hma'] == True].index[-1]
-        # Get the next row after hma_last_index
-        next_index = hma_last_index + pd.Timedelta(df1.index.freq)
-        df_after_hma = df1.loc[next_index:]
+    def _rule2(self, df1: pd) -> bool:        
+        # get all the row from the last_hma (included) till the end
+        df_at_hma_and_after = df1[df1.index >= df1["crossing_hma"].idxmax()]
+        if df_at_hma_and_after["crossing_bbm"].any():
+            logger.info(f'{self._symbol} : rule 2 : failed')
+            return False
+        # remove the last_hma row and keep all of them after
+        df_after_hma = df_at_hma_and_after.iloc[1:] 
         if df_after_hma.empty:
             logger.info(f'{self._symbol} : rule 2 : passed')
             return True
@@ -142,9 +146,9 @@ class MyStrategy:
             elif df_after_hma["touching_bbu"].any() or df_after_hma["touching_bbl"].any():
                 logger.info(f'{self._symbol} : rule 2 : failed')
                 return False
-            else:
-                logger.info(f'{self._symbol} : rule 2 : passed')
-                return True
+            
+        logger.info(f'{self._symbol} : rule 2 : passed')
+        return True
 
     def _rule3(self, df1: pd) -> bool:
         hma_last_index = df1[df1['crossing_hma'] == True].index[-1]

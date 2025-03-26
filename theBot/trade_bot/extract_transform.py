@@ -6,7 +6,7 @@ from trade_bot.display.my_graph import MyGraph
 from trade_bot.utils.frequency_utils import freq_to_resample, get_frequency_for_next_step
 from trade_bot.utils.tools import get_client_oid
 from trade_bot.my_bitget import MyBitget
-from theBot.trade_bot.my_strategy import MyStrategy
+from trade_bot.my_strategy import MyStrategy
 import trade_bot.utils.enums as const
 
 class ExtractTransform:
@@ -102,13 +102,12 @@ class ExtractTransform:
         # ajout keltner
         # longueur = 20
         # multi = 2
-        # source fermeture
+        # use_tr = True , only df1['close'] as source 
         # mode moyenne =  ema
         # Band style average
         # ATR length 10
-        df1.ta.kc(close=df1['close'],
-                      length=20, scalar=2,
-                      mamode='ema', use_tr=True, append=True)
+        df1.ta.kc(high=df1['high'], low=df1['low'], close=df1['close'],
+                              length=20, scalar=2, mamode='ema', use_tr=True, append=True)
 
         df1 = df1.drop(['BBB_20_3.0',
                                 'BBP_20_3.0',
@@ -133,6 +132,7 @@ class ExtractTransform:
         df1['crossing_kcu'] = False
         df1['crossing_kcl'] = False
         df1['touching_bbu'] = False
+        df1['crossing_bbm'] = False
         df1['touching_bbl'] = False
         df1['crossing_hma'] = False
 
@@ -154,6 +154,12 @@ class ExtractTransform:
         red_mask = (df1['open'] > df1['hma']) & (df1['hma'] > df1['close']) & (df1['candles_color'] == 'red')
         df1.loc[red_mask, 'crossing_hma'] = True
 
+        # set crossing_bbm = True when bbm is betwwen the open and close of candles
+        green_mask = (df1['close'] > df1['bbm']) & (df1['bbm'] > df1['open']) & (df1['candles_color'] == 'green')
+        df1.loc[green_mask, 'crossing_bbm'] = True
+        red_mask = (df1['open'] > df1['bbm']) & (df1['bbm'] > df1['close']) & (df1['candles_color'] == 'red')
+        df1.loc[red_mask, 'crossing_bbm'] = True
+
         # set touching_bbu = True when bbu is betwwen the low and high of candles
         mask = (df1['high'] >= df1['bbu']) & (df1['bbu'] >= df1['low'])
         df1.loc[mask, 'touching_bbu'] = True
@@ -169,7 +175,7 @@ class ExtractTransform:
         else:
             df1['side'] = NEW_SELL
 
-        logger.debug(f'{self._symbol} all the crossing kc(l,u) , bb(l,u) and hma have been added')
+        logger.debug(f'{self._symbol} all the crossing and touching have been added')
         self.set_data(df1)
         return True
 
@@ -186,12 +192,10 @@ class ExtractTransform:
         df_row['estim_profit'] = abs(df_row['bbm'] - df_row['close'])
 
         if df1["side"].eq(NEW_BUY).any():
-            self._set_side(NEW_BUY)
             df_row['side'] = NEW_BUY
             df_row['lowest'] = df1.iloc[-(int(const.MAX_MIN_VALUE_WINDOW)):, df1.columns.get_loc('low')].min()
             df_row['presetStopLossPrice'] = df_row['lowest'] - (df_row['lowest'] * const.STOP_LOST)
         else:
-            self._set_side(NEW_SELL)
             df_row['side'] = NEW_SELL
             df_row['highest'] = df1.iloc[-(int(const.MAX_MIN_VALUE_WINDOW)):, df1.columns.get_loc('high')].max()
             df_row['presetStopLossPrice'] = df_row['highest'] + (df_row['highest'] * const.STOP_LOST)
@@ -208,10 +212,12 @@ class ExtractTransform:
         df_row['presetTakeProfitPrice'] = df_row['bbm']
 
         self._set_row(df_row)
-        self._set_price_and_validate_ratio()
+        return True
+        #self._set_price_and_validate_ratio()
         
     def _set_price_and_validate_ratio(self) -> bool:
-        df0 = self._get_row()
+        # a changer plus tard 
+        df0 = self.get_row()
         bids_asks = self._mybit.get_bids_and_asks(self._symbol)
         
         if df0['side'] == NEW_BUY:
@@ -225,7 +231,7 @@ class ExtractTransform:
         # price if we have a ratio >= 1.2 
         ########################################################################################
         df0['price']  = df1.iloc[5,0]
-        logger.info(f'{self._symbol} : price for trade is : {price}')
+        logger.info(f"{self._symbol} : price for trade is : {df0['price']}")
 
         if df0['side'] == NEW_BUY:
             # the ratio is calculated with the premise the buying price (asks list)
