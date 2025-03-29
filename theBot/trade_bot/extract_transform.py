@@ -3,8 +3,7 @@ from trade_bot.utils.trade_logger import logger
 import pandas_ta as ta
 from pybitget.enums import NEW_BUY, NEW_SELL, ORDER_TYPE_LIMIT, TIME_IN_FORCE_TYPES
 from trade_bot.display.my_graph import MyGraph
-from trade_bot.utils.frequency_utils import freq_to_resample, get_frequency_for_next_step
-from trade_bot.utils.tools import get_client_oid
+from trade_bot.utils.frequency_utils import freq_to_resample
 from trade_bot.my_bitget import MyBitget
 from trade_bot.my_strategy import MyStrategy
 import trade_bot.utils.enums as const
@@ -53,15 +52,18 @@ class ExtractTransform:
             logger.info(f'{self._symbol} : validation at frequency {freq}')
             self.set_data(self._mybit.get_candles(self._symbol, freq))
             if self._prepare_data_for(freq_to_resample(freq)):
-                if self._myStrat.validate_step1(self._df_data.iloc[const.STRATEGY_WINDOW:].copy()):
+                if self._myStrat.validate_rules(self._df_data.iloc[const.STRATEGY_WINDOW:].copy()):
                     # the next good candidat replace the last one found
-                    logger.debug(f'{self._symbol} : good candidat at this {freq}')
+                    logger.info(f'{self._symbol} : good candidat at this {freq}')
                     self._set_candidat(self.get_data(), freq)
                     self._myGraph.set_candidat(self.get_data(), freq)
                     # for debug only 
-                    # self.display_chart()
+                    #self.display_chart()
                 else:
                     logger.debug(f'{self._symbol} : bad candidat at this {freq}')
+                    self._myGraph.set_candidat(self.get_data(), freq)
+                    # for debug only 
+                    self.display_chart()
             else:
                 logger.debug(f'{self._symbol} : not enough data at this {freq}')
         
@@ -199,21 +201,12 @@ class ExtractTransform:
             df_row['side'] = NEW_SELL
             df_row['highest'] = df1.iloc[-(int(const.MAX_MIN_VALUE_WINDOW)):, df1.columns.get_loc('high')].max()
             df_row['presetStopLossPrice'] = df_row['highest'] + (df_row['highest'] * const.STOP_LOST)
-        
-        df_row['marginCoin'] = const.MARGIN_COIN_USED
-        df_row['size'] = 0.0
-        df_row['price'] = 0.0
-        df_row['orderType'] = ORDER_TYPE_LIMIT
-        df_row['timeInForceValue'] = TIME_IN_FORCE_TYPES[1]
-        df_row['custom_id'] = get_client_oid()  # order_1
-        df_row['reduceOnly'] = 'false'
 
         # bbm is the first take profit at 50% usually 
         df_row['presetTakeProfitPrice'] = df_row['bbm']
 
         self._set_row(df_row)
-        return True
-        #self._set_price_and_validate_ratio()
+        return self._set_price_and_validate_ratio()
         
     def _set_price_and_validate_ratio(self) -> bool:
         # a changer plus tard 
@@ -222,22 +215,28 @@ class ExtractTransform:
         
         if df0['side'] == NEW_BUY:
             df1 = pd.DataFrame(bids_asks.get('data')['asks'])
-        else:
+            #######################################################################################
+            # we want to buy at the lowest price possible
+            # the rule for now is to take the price at position 10
+            ########################################################################################
+            df0['price']  = df1.iloc[10,0]
+            logger.info(f"{self._symbol} : price for trade is : {df0['price']}")
+        elif df0['side'] == NEW_SELL:
             df1 = pd.DataFrame(bids_asks.get('data')['bids'])
-        
-        #######################################################################################
-        # take the price at position 5 
-        # the rule for now is to take the price at position 5 and check with this 
-        # price if we have a ratio >= 1.2 
-        ########################################################################################
-        df0['price']  = df1.iloc[5,0]
-        logger.info(f"{self._symbol} : price for trade is : {df0['price']}")
+            #######################################################################################
+            # we want to buy at the highest price possible
+            # the rule for now is to take the price at position 3
+            ########################################################################################
+            df0['price']  = df1.iloc[3,0]
 
+        else :
+            return False
+        
         if df0['side'] == NEW_BUY:
-            # the ratio is calculated with the premise the buying price (asks list)
+            # the ratio is calculated with the price from the asks list
             df0['ratio'] = df0['estim_profit'] / (df0['price'] - df0['presetStopLossPrice'])
         else:
-            # the ratio is calculated with the premise the selling price (bids list)
+            # the ratio is calculated with the price from the bids list
             df0['ratio'] = df0['estim_profit']  / (df0['presetStopLossPrice'] - df0['price'])
 
         if df0['ratio'] > const.ACCEPTABLE_RATIO:

@@ -4,7 +4,7 @@ from pybitget.enums import *
 from pybitget import utils
 from pybitget import exceptions
 from pybitget import logger
-
+from trade_bot.utils.enums import MIN_CANDLES_FOR_INDICATORS
 
 class Client(object):
 
@@ -203,7 +203,13 @@ class Client(object):
             logger.error("pls check args")
             return False
 
-    def mix_get_candles(self, symbol, productType, granularity, startTime, endTime, kLineType='mark', limit=100):
+    def mix_get_candles(self, symbol, 
+                        productType, 
+                        granularity, 
+                        startTime, 
+                        endTime, 
+                        kLineType='mark', 
+                        limit= MIN_CANDLES_FOR_INDICATORS):
         """
         Get Candle Data: https://bitgetlimited.github.io/apidoc/en/mix/#get-candle-data
         Limit rule: 20 times/1s (IP)
@@ -211,7 +217,7 @@ class Client(object):
         :return:
         """
         params = {}
-        if symbol and granularity and startTime and endTime:
+        if symbol and productType and granularity and startTime and endTime :
             params["symbol"] = symbol
             ### j'ai ajouté le productType pour la V2 
             params["productType"] = productType
@@ -607,7 +613,7 @@ class Client(object):
                 params["clientOid"] = clientOrderId
             params["presetTakeProfitPrice"] = presetTakeProfitPrice
             params["presetStopLossPrice"] = presetStopLossPrice
-            return self._request_with_params(POST, MIX_ORDER_V1_URL + '/placeOrder', params)
+            return self._request_with_params(POST, MIX_ORDER_V2_URL + '/placeOrder', params)
         else:
             logger.error("pls check args")
             return False

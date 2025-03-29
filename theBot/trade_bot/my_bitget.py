@@ -2,8 +2,9 @@ import pandas as pd
 from trade_bot.utils.trade_logger import logger
 import time
 import trade_bot.utils.enums as const
+from trade_bot.utils.tools import get_client_oid
 from trade_bot.utils.frequency_utils import getFreq_in_ms
-# from my_account import MyAccount
+from pybitget.enums import ORDER_TYPE_LIMIT, TIME_IN_FORCE_TYPES
 from pybitget.exceptions import BitgetAPIException
 from pybitget import Client
 
@@ -37,7 +38,7 @@ class MyBitget:
                 return df
             else:
                 if do_one:
-                    return pd.DataFrame(pd.Series(['BTCUSDT'], name='symbol'))
+                    return pd.DataFrame(pd.Series(['AGLDUSDT'], name='symbol'))
                 else:
                     df = pd.read_csv(f'{const.DATA_FOLDER}/all_tickers.csv', index_col=0)
                     logger.debug('getting tickers from the debug directory')
@@ -48,7 +49,7 @@ class MyBitget:
             logger.error(f'{e.args} to read or write files') 
             return None
 
-    def get_candles(self, _symbol: str, granularity: str, do_call=False, do_save=False) -> pd:
+    def get_candles(self, _symbol: str, granularity: str, do_call=True, do_save=True) -> pd:
         try:
             if do_call:
                 # Get the current timestamp in milliseconds
@@ -67,8 +68,8 @@ class MyBitget:
                 return df
             else:
                 # read each ticker file
-                #df = pd.read_csv(f'{const.DATA_FOLDER}/ticker_data_{granularity}/{_symbol}.csv',index_col=0)
-                df = pd.read_csv(f'trade_bot/data/ticker_data_for_backtest/BTC_1hour_2.csv')
+                df = pd.read_csv(f'{const.DATA_FOLDER}/ticker_data_{granularity}/{_symbol}.csv',index_col=0)
+                #df = pd.read_csv(f'trade_bot/data/ticker_data_for_backtest/BTC_1hour_2.csv')
                 return df
         except BitgetAPIException as e:
             logger.error(f'{e.code}: {e.message} for get_trading_candles')
@@ -100,7 +101,7 @@ class MyBitget:
             self._total_usdt = float(account.get('data')[0].get('available'))
             return self._total_usdt * float(const.PERCENTAGE_VALUE_PER_TRADE)
         except BitgetAPIException as e:
-            self._logger.error(f'getting BitgetAPIException {e} to get_usdt_available')
+            logger.error(f'getting BitgetAPIException {e} to get_usdt_available')
 
     def get_bids_and_asks(self, symbol: str, precision='scale1', limit=50) -> pd:
         try:
@@ -108,3 +109,43 @@ class MyBitget:
             return bids_asks
         except BitgetAPIException as e: 
             logger.error(f'getting BitgetAPIException {e} to get_bids_asks')
+    
+    def place_order(self, symbol, side, price, presetTakeProfitPrice, presetStopLossPrice):
+        try:
+            usdt_avail = self.get_usdt_per_trade()
+            if usdt_avail > 0.0:    # must be 10$ after debug
+                logger.info(f"ORDER: symbol= {symbol}")
+                logger.info(f"marginCoin= {const.MARGIN_COIN_USED}")
+                logger.info(f"orderType= {ORDER_TYPE_LIMIT}")
+                logger.info(f"side= {side}")
+                logger.info(f"size= {usdt_avail/price}")
+                if side == 'open_long':
+                    logger.info(f"presetTakeProfitPrice= {presetTakeProfitPrice}")
+                    logger.info(f"price={price}")
+                    logger.info(f"presetStopLossPrice= {presetStopLossPrice}") 
+                else:
+                    logger.info(f"presetStopLossPrice= {presetStopLossPrice}") 
+                    logger.info(f"price={price}")
+                    logger.info(f"presetTakeProfitPrice= {presetTakeProfitPrice}")
+                    
+                logger.info(f"clientOrderId= {get_client_oid()}")
+                logger.info(f"reduceOnly= False")
+                logger.info(f"timeInForceValue= {TIME_IN_FORCE_TYPES[1]}")
+                
+                
+            '''
+                order = self._client.mix_place_order(symbol= self._symbol,
+                                                     marginCoin= const.MARGIN_COIN_USED,
+                                                     size= price * usdt_avail,
+                                                     side= side,
+                                                     orderType= ORDER_TYPE_LIMIT,
+                                                     price=price,
+                                                     clientOrderId= get_client_oid(),  # order_1
+                                                     reduceOnly= False,
+                                                     timeInForceValue= TIME_IN_FORCE_TYPES[1],
+                                                     presetTakeProfitPrice= presetTakeProfitPrice,
+                                                     presetStopLossPrice= presetStopLossPrice)
+            '''
+        except BitgetAPIException as e:
+            logger.error(f'{e.code}: {e.message} to get contract')
+            return None
