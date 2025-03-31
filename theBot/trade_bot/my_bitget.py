@@ -4,7 +4,7 @@ import time
 import trade_bot.utils.enums as const
 from trade_bot.utils.tools import get_client_oid
 from trade_bot.utils.frequency_utils import getFreq_in_ms
-from pybitget.enums import ORDER_TYPE_LIMIT, TIME_IN_FORCE_TYPES
+from pybitget.enums import ORDER_TYPE_LIMIT, TIME_IN_FORCE_TYPES, OPEN_SHORT, OPEN_LONG
 from pybitget.exceptions import BitgetAPIException
 from pybitget import Client
 
@@ -38,7 +38,7 @@ class MyBitget:
                 return df
             else:
                 if do_one:
-                    return pd.DataFrame(pd.Series(['AGLDUSDT'], name='symbol'))
+                    return pd.DataFrame(pd.Series(['CROUSDT'], name='symbol'))
                 else:
                     df = pd.read_csv(f'{const.DATA_FOLDER}/all_tickers.csv', index_col=0)
                     logger.debug('getting tickers from the debug directory')
@@ -49,7 +49,7 @@ class MyBitget:
             logger.error(f'{e.args} to read or write files') 
             return None
 
-    def get_candles(self, _symbol: str, granularity: str, do_call=True, do_save=True) -> pd:
+    def get_candles(self, _symbol: str, granularity: str, do_call=True, do_save=False) -> pd:
         try:
             if do_call:
                 # Get the current timestamp in milliseconds
@@ -78,16 +78,16 @@ class MyBitget:
             logger.error(f'{e.args} to read or write files for {_symbol}')
             return pd.DataFrame() # return empty df
 
-    def get_contract(self, _symbol: str) -> pd:
-        # contrat_config_demo for demo only without symbol
-        #contract = myclient.mix_get_contract_config_demo('SUSDT-FUTURES')
-        # contrat_config for production with symbol
+    def get_contract(self, _symbol=False) -> pd:
         try:
-            contract = self._client.mix_get_contract_config(_symbol, const.PRODUCT_TYPE_USED)
+            if _symbol:
+                contract = self._client.mix_get_contract_config(const.PRODUCT_TYPE_USED, symbol=_symbol)
+            else: 
+                contract = self._client.mix_get_contract_config(const.PRODUCT_TYPE_USED)
             df = pd.DataFrame(contract.get('data'))
             df = df.drop(['baseCoin','quoteCoin','feeRateUpRatio','makerFeeRate','takerFeeRate',
                       'openCostUpRatio','supportMarginCoins','symbolType','maxSymbolOrderNum',
-                      'maxProductOrderNum','maxPositionNum','symbolStatus','offTime','limitOpenTime',
+                      'maxProductOrderNum','maxPositionNum','symbolStatus','offTime',
                       'deliveryTime','deliveryStartTime', 'deliveryPeriod','launchTime','fundInterval',
                       'minLever','maxLever','posLimit','maintainTime','openTime'],axis=1)
             return df
@@ -110,42 +110,42 @@ class MyBitget:
         except BitgetAPIException as e: 
             logger.error(f'getting BitgetAPIException {e} to get_bids_asks')
     
-    def place_order(self, symbol, side, price, presetTakeProfitPrice, presetStopLossPrice):
+    def place_order(self, df_row: pd):
         try:
-            usdt_avail = self.get_usdt_per_trade()
-            if usdt_avail > 0.0:    # must be 10$ after debug
-                logger.info(f"ORDER: symbol= {symbol}")
-                logger.info(f"marginCoin= {const.MARGIN_COIN_USED}")
-                logger.info(f"orderType= {ORDER_TYPE_LIMIT}")
-                logger.info(f"side= {side}")
-                logger.info(f"size= {usdt_avail/price}")
-                if side == 'open_long':
-                    logger.info(f"presetTakeProfitPrice= {presetTakeProfitPrice}")
-                    logger.info(f"price={price}")
-                    logger.info(f"presetStopLossPrice= {presetStopLossPrice}") 
-                else:
-                    logger.info(f"presetStopLossPrice= {presetStopLossPrice}") 
-                    logger.info(f"price={price}")
-                    logger.info(f"presetTakeProfitPrice= {presetTakeProfitPrice}")
-                    
-                logger.info(f"clientOrderId= {get_client_oid()}")
-                logger.info(f"reduceOnly= False")
-                logger.info(f"timeInForceValue= {TIME_IN_FORCE_TYPES[1]}")
-                
-                
-            '''
-                order = self._client.mix_place_order(symbol= self._symbol,
+            clientOid = get_client_oid()
+            logger.info(f"ORDER: symbol = {df_row['symbol']}")
+            logger.info(f"productType = {const.PRODUCT_TYPE_USED}")
+            logger.info("marginMode = isolated")
+            logger.info(f"marginCoin = {const.MARGIN_COIN_USED}")
+            logger.info(f"size = {df_row['size']}")
+            logger.info(f"price = {df_row['price']}")
+            logger.info(f"side = {df_row['side']}")
+            logger.info(f"tradeSide = open")
+            logger.info(f"orderType = {ORDER_TYPE_LIMIT}")
+            logger.info(f"force = {TIME_IN_FORCE_TYPES[1]}")
+            logger.info(f"clientOid = {clientOid}")
+            logger.info(f"reduceOnly = NO")
+            logger.info(f"presetStopSurplusPrice = {df_row['presetStopSurplusPrice']}")
+            logger.info(f"presetStopLossPrice = {df_row['presetStopLossPrice']}")
+
+            '''     
+            order = self._client.mix_place_order(symbol= df_row['symbol'],
+                                                     productType= const.PRODUCT_TYPE_USED,
+                                                     marginMode= 'isolated',
                                                      marginCoin= const.MARGIN_COIN_USED,
-                                                     size= price * usdt_avail,
-                                                     side= side,
+                                                     size= df_row['size'],
+                                                     price=df_row['price'],
+                                                     side= df_row['side'],
+                                                     tradeSide = 'open',
                                                      orderType= ORDER_TYPE_LIMIT,
-                                                     price=price,
-                                                     clientOrderId= get_client_oid(),  # order_1
-                                                     reduceOnly= False,
-                                                     timeInForceValue= TIME_IN_FORCE_TYPES[1],
-                                                     presetTakeProfitPrice= presetTakeProfitPrice,
-                                                     presetStopLossPrice= presetStopLossPrice)
+                                                     force = TIME_IN_FORCE_TYPES[1],
+                                                     clientOid= clientOid,  # order_1
+                                                     reduceOnly= 'NO',
+                                                     presetStopSurplusPrice= df_row['presetStopSurplusPrice'],
+                                                     presetStopLossPrice= df_row['presetStopLossPrice'])
+            print(order.get('data'))'
             '''
+
         except BitgetAPIException as e:
             logger.error(f'{e.code}: {e.message} to get contract')
             return None

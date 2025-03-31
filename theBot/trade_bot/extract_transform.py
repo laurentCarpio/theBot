@@ -1,9 +1,10 @@
 import pandas as pd
 from trade_bot.utils.trade_logger import logger
 import pandas_ta as ta
-from pybitget.enums import NEW_BUY, NEW_SELL, ORDER_TYPE_LIMIT, TIME_IN_FORCE_TYPES
+from pybitget.enums import OPEN_LONG, OPEN_SHORT
 from trade_bot.display.my_graph import MyGraph
 from trade_bot.utils.frequency_utils import freq_to_resample
+from trade_bot.utils.tools import adjust_price, adjust_quantity
 from trade_bot.my_bitget import MyBitget
 from trade_bot.my_strategy import MyStrategy
 import trade_bot.utils.enums as const
@@ -58,12 +59,12 @@ class ExtractTransform:
                     self._set_candidat(self.get_data(), freq)
                     self._myGraph.set_candidat(self.get_data(), freq)
                     # for debug only 
-                    #self.display_chart()
+                    # self.display_chart()
                 else:
                     logger.debug(f'{self._symbol} : bad candidat at this {freq}')
-                    self._myGraph.set_candidat(self.get_data(), freq)
+                    #self._myGraph.set_candidat(self.get_data(), freq)
                     # for debug only 
-                    self.display_chart()
+                    # self.display_chart()
             else:
                 logger.debug(f'{self._symbol} : not enough data at this {freq}')
         
@@ -171,11 +172,16 @@ class ExtractTransform:
         df1.loc[mask, 'touching_bbl'] = True
 
         df1 = df1.drop(['candles_color'], axis=1)
-        
-        if df1["crossing_kcl"].any():
-            df1['side'] = NEW_BUY
+
+        # check only on the const.STRATEGY_WINDOW for the side of the trade
+        # and set the side after 
+        df_last_rows = df1.iloc[const.STRATEGY_WINDOW:].copy()
+        if df_last_rows["crossing_kcl"].any():
+            df1['side'] = OPEN_LONG
+        elif df_last_rows["crossing_kcu"].any():
+            df1['side'] = OPEN_SHORT
         else:
-            df1['side'] = NEW_SELL
+            df1['side'] = 'no_trade'
 
         logger.debug(f'{self._symbol} all the crossing and touching have been added')
         self.set_data(df1)
@@ -183,7 +189,7 @@ class ExtractTransform:
 
     def prep_row(self) -> bool:
         df1 = self._get_candidat().copy()        
-        df1 = df1.drop(['crossing_kcl','crossing_kcu','touching_bbu','crossing_hma'],axis=1)
+        #df1 = df1.drop(['crossing_kcl','crossing_kcu','touching_bbu','crossing_hma'],axis=1)
         
         # get the last row 
         df_row = df1.iloc[-1].copy()
@@ -193,12 +199,12 @@ class ExtractTransform:
         # the estimate profit is the difference between the bbm and the close price
         df_row['estim_profit'] = abs(df_row['bbm'] - df_row['close'])
 
-        if df1["side"].eq(NEW_BUY).any():
-            df_row['side'] = NEW_BUY
+        if df1["side"].eq(OPEN_LONG).any():
+            df_row['side'] = OPEN_LONG
             df_row['lowest'] = df1.iloc[-(int(const.MAX_MIN_VALUE_WINDOW)):, df1.columns.get_loc('low')].min()
             df_row['presetStopLossPrice'] = df_row['lowest'] - (df_row['lowest'] * const.STOP_LOST)
         else:
-            df_row['side'] = NEW_SELL
+            df_row['side'] = OPEN_SHORT
             df_row['highest'] = df1.iloc[-(int(const.MAX_MIN_VALUE_WINDOW)):, df1.columns.get_loc('high')].max()
             df_row['presetStopLossPrice'] = df_row['highest'] + (df_row['highest'] * const.STOP_LOST)
 
@@ -211,28 +217,50 @@ class ExtractTransform:
     def _set_price_and_validate_ratio(self) -> bool:
         # a changer plus tard 
         df0 = self.get_row()
+
+        contract = self._mybit.get_contract(self._symbol)
+        if contract['limitOpenTime'].iloc[-1] != '-1': #if not = -1 no trade possible 
+            return False 
+        
+        minTradeUSDT = float(contract['minTradeUSDT'].iloc[-1])
+        priceEndStep = float(contract['priceEndStep'].iloc[-1])
+        volumePlace = int(contract['volumePlace'].iloc[-1])
+        pricePlace = int(contract['pricePlace'].iloc[-1])
+
+        usdt_avail = self._mybit.get_usdt_per_trade()
+        # for testing and debug trade = 8$ max  
+        usdt_avail = float(8.0)
+        
+        # if not enough money to trade 
+        if usdt_avail < 0.0 or usdt_avail < minTradeUSDT:   
+            return False
+
         bids_asks = self._mybit.get_bids_and_asks(self._symbol)
         
-        if df0['side'] == NEW_BUY:
+        if df0['side'] == OPEN_LONG:
             df1 = pd.DataFrame(bids_asks.get('data')['asks'])
             #######################################################################################
             # we want to buy at the lowest price possible
             # the rule for now is to take the price at position 10
             ########################################################################################
-            df0['price']  = df1.iloc[10,0]
+            # df0['price']  = df1.iloc[10,0]
+            df0['price']  = adjust_price(df1.iloc[10,0], priceEndStep, pricePlace)
             logger.info(f"{self._symbol} : price for trade is : {df0['price']}")
-        elif df0['side'] == NEW_SELL:
+
+        elif df0['side'] == OPEN_SHORT:
             df1 = pd.DataFrame(bids_asks.get('data')['bids'])
             #######################################################################################
-            # we want to buy at the highest price possible
+            # we want to sell at the highest price possible
             # the rule for now is to take the price at position 3
             ########################################################################################
-            df0['price']  = df1.iloc[3,0]
-
+            #df0['price']  = df1.iloc[3,0]
+            df0['price']  = adjust_price(df1.iloc[10,0], priceEndStep, pricePlace)
         else :
             return False
         
-        if df0['side'] == NEW_BUY:
+        df0['size'] = adjust_quantity(usdt_avail / df0['price'], volumePlace)    
+
+        if df0['side'] == OPEN_LONG:
             # the ratio is calculated with the price from the asks list
             df0['ratio'] = df0['estim_profit'] / (df0['price'] - df0['presetStopLossPrice'])
         else:

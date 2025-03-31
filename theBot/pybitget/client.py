@@ -85,8 +85,8 @@ class Client(object):
         :return:
         """
         return self._request_without_params(GET, MIX_MARKET_V1_URL + '/contract-vip-level')
-
-    def mix_get_contract_config_demo(self, productType):
+    
+    def mix_get_contract_config(self, productType, symbol=False):
         """
         Get All symbols: https://bitgetlimited.github.io/apidoc/en/mix/#get-all-symbols
         Limit rule: 20 times/1s (IP)
@@ -94,29 +94,16 @@ class Client(object):
         :return:
         """
         params = {}
+        
         if productType:
             params["productType"] = productType
-            return self._request_with_params(GET, MIX_MARKET_V2_URL + '/contracts', params)
         else:
             logger.error("pls check args")
             return False
-    
-    def mix_get_contract_config(self, symbol, productType):
-        """
-        Get All symbols: https://bitgetlimited.github.io/apidoc/en/mix/#get-all-symbols
-        Limit rule: 20 times/1s (IP)
-        Required: productType
-        :return:
-        """
-        params = {}
-        if productType:
-            params["productType"] = productType
+        
         if symbol:
             params["symbol"] = symbol
-            return self._request_with_params(GET, MIX_MARKET_V2_URL + '/contracts', params)
-        else:
-            logger.error("pls check args")
-            return False
+        return self._request_with_params(GET, MIX_MARKET_V2_URL + '/contracts', params)
 
     def mix_get_merge_depth(self, symbol, productType, precision, limit):
         """
@@ -133,7 +120,7 @@ class Client(object):
         :return:
         """
         params = {}
-        if symbol:
+        if symbol and productType and precision and limit:
             params["symbol"] = symbol
             params["productType"] = productType
             params["precision"] = precision
@@ -579,44 +566,25 @@ class Client(object):
 
     """ --- MIX-tradeApi """
 
-    def mix_place_order(self, symbol, marginCoin, size, side, orderType,
-                        price='', clientOrderId=None, reduceOnly=False,
-                        timeInForceValue='normal', presetTakeProfitPrice='', presetStopLossPrice=''):
-        """
-        place an order: https://bitgetlimited.github.io/apidoc/en/mix/#place-order
-        Limit rule: 10 times/1s (uid)
-        Trader Limit rule: 1 times/1s (uid)
-
-        Required: symbol, marginCoin, size, price, side, orderType.
-
-        price: Mandatory in case of price limit
-        marginCoin: Deposit currency
-        size: It is quantity when the price is limited. The market price is the limit. The sales is the quantity
-        side：open_long open_short close_long close_short
-        orderType: limit(fixed price)  market(market price)
-        timeInForceValue: normal(Ordinary price limit order)   postOnly(It is only a maker. The market price is not allowed to use this)  ioc(Close immediately and cancel the remaining)  fok(Complete transaction or immediate cancellation)
-        presetTakeProfitPrice: Default stop profit price
-        presetStopLossPrice：Preset stop loss price
-        :return:
-        """
+    def mix_place_order(self, symbol, productType, marginMode, marginCoin, size, price, side, tradeSide, 
+                        orderType, force, clientOid, reduceOnly, presetStopSurplusPrice, presetStopLossPrice):
         params = {}
-        if symbol and marginCoin and side and orderType and size:
-            params["symbol"] = symbol
-            params["marginCoin"] = marginCoin
-            params["price"] = price
-            params["size"] = size
-            params["side"] = side
-            params["orderType"] = orderType
-            params["reduceOnly"] = reduceOnly
-            params["timeInForceValue"] = timeInForceValue
-            if clientOrderId is not None:
-                params["clientOid"] = clientOrderId
-            params["presetTakeProfitPrice"] = presetTakeProfitPrice
-            params["presetStopLossPrice"] = presetStopLossPrice
-            return self._request_with_params(POST, MIX_ORDER_V2_URL + '/placeOrder', params)
-        else:
-            logger.error("pls check args")
-            return False
+        params["symbol"] = symbol
+        params["productType"] = productType
+        params["marginMode"] = marginMode
+        params["marginCoin"] = marginCoin
+        params["size"] = size
+        params["price"] = price
+        params["side"] = side
+        params["tradeSide"] = size
+        params["orderType"] = orderType
+        params["force"] = force
+        params["clientOid"] = clientOid
+        params["reduceOnly"] = reduceOnly
+        params["presetStopSurplusPrice"] = presetStopSurplusPrice
+        params["presetStopLossPrice"] = presetStopLossPrice
+        return self._request_with_params(POST, MIX_ORDER_V2_URL + '/place-order', params)
+
 
     def mix_reversal(self, symbol, marginCoin, side, orderType,
                      size=None, clientOrderId=None, timeInForceValue='normal', reverse=False):
