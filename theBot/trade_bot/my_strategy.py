@@ -1,7 +1,6 @@
 import pandas as pd
 from trade_bot.utils.trade_logger import logger
 import trade_bot.utils.enums as const
-from pybitget.enums import OPEN_LONG, OPEN_SHORT
 
 
 class MyStrategy:
@@ -13,7 +12,6 @@ class MyStrategy:
         self._symbol = symbol
 
     def validate_rules(self, df1: pd) -> bool:
-        return True
         #########################################################################################################################
         #    Rule 1 : at least one crossing_kc(l,u) one touching bb(l,u) and one crossing hma both in that order
         #########################################################################################################################
@@ -28,7 +26,6 @@ class MyStrategy:
         #    Rule 5 : short : the highest price between last_bbu and last_hma cannot be higher than 5% of hma crossing price
         #           : long  : the lowest price between last_bbl and last_hma cannot be lower than 5% of hma crossing price
         #########################################################################################################################
-        '''
         if self._rule1(df1):
             if self._rule2(df1):
                 if self._rule3(df1):
@@ -37,8 +34,7 @@ class MyStrategy:
                             logger.debug(f'{self._symbol} : all rules : passed')
                             return True
         logger.debug(f'{self._symbol} : one rule failed')
-        return False'
-        '''
+        return False
 
     #########################################################################################################################
     #    Rule 1 : at least one crossing_kc(l,u) one touching bb(l,u) and one crossing hma both in that order
@@ -137,7 +133,7 @@ class MyStrategy:
     #########################################################################################################################
     def _rule4(self, df1: pd) -> bool:
         hma_last_index = df1[df1['crossing_hma'] == True].index[-1]
-        if df1["side"].eq(OPEN_SHORT).any():
+        if df1["side"].eq(const.OPEN_SHORT).any():
             # we are in a trading long opportunity
             hma_high_price = df1.loc[hma_last_index, 'high']
             logger.debug(f'hma_high price is {hma_high_price} for {self._symbol}')
@@ -150,7 +146,7 @@ class MyStrategy:
             else:
                 logger.info(f'{self._symbol} : rule 4 : failed')
                 return False
-        elif df1["side"].eq(OPEN_LONG).any():
+        elif df1["side"].eq(const.OPEN_LONG).any():
             # we are in a trading short opportunity
             hma_low_price = df1.loc[hma_last_index, 'low']
             logger.debug(f'hma low price is {hma_low_price} for {self._symbol}')
@@ -175,7 +171,7 @@ class MyStrategy:
         boosted_hma_crossing_price = hma_crossing_price * const.ACCEPTABLE_MARGE
         logger.debug(f'105 % of crossing hma price is {boosted_hma_crossing_price} for {self._symbol}') 
 
-        if df1["side"].eq(OPEN_LONG).any():        
+        if df1["side"].eq(const.OPEN_LONG).any():        
             # we are in a trading short opportunity
             bbl_last_index = df1[df1['touching_bbl'] == True].index[-1]
             df_interval = df1.loc[bbl_last_index:hma_last_index, 'low']
@@ -187,7 +183,7 @@ class MyStrategy:
             else:
                 logger.debug(f'{self._symbol} : rule 5 : passed')
                 return True
-        elif df1["side"].eq(OPEN_SHORT).any():
+        elif df1["side"].eq(const.OPEN_SHORT).any():
             bbu_last_index = df1[df1['touching_bbu'] == True].index[-1]
             df_interval = df1.loc[bbu_last_index:hma_last_index, 'high']
             logger.debug(f'interval is between {bbu_last_index} and {hma_last_index} for {self._symbol}')

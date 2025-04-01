@@ -130,7 +130,7 @@ class Client(object):
             logger.error("pls check args")
             return False
 
-    def mix_get_single_symbol_ticker(self, symbol):
+    def mix_get_single_symbol_ticker(self, symbol, productType):
         """
         Get Single Symbol Ticker: https://bitgetlimited.github.io/apidoc/en/mix/#get-single-symbol-ticker
 
@@ -143,9 +143,10 @@ class Client(object):
         :return:
         """
         params = {}
-        if symbol:
+        if symbol and productType:
             params["symbol"] = symbol
-            return self._request_with_params(GET, MIX_MARKET_V1_URL + '/ticker', params)
+            params["productType"] = productType
+            return self._request_with_params(GET, MIX_MARKET_V2_URL + '/ticker', params)
         else:
             logger.error("pls check args")
             return False
@@ -481,7 +482,7 @@ class Client(object):
             logger.error("pls check args")
             return False
 
-    def mix_get_single_position(self, symbol, marginCoin=None):
+    def mix_get_single_position(self, productType, symbol, marginCoin):
         """
             Obtain the user's single position information.
             Get Symbol Position: https://bitgetlimited.github.io/apidoc/en/mix/#get-symbol-position
@@ -493,11 +494,11 @@ class Client(object):
             :return:
         """
         params = {}
-        if symbol:
+        if productType and symbol and marginCoin:
+            params["productType"] = productType
             params["symbol"] = symbol
-            if marginCoin is not None:
-                params["marginCoin"] = marginCoin
-            return self._request_with_params(GET, MIX_POSITION_V1_URL + '/singlePosition', params)
+            params["marginCoin"] = marginCoin
+            return self._request_with_params(GET, MIX_POSITION_V2_URL + '/single-position', params)
         else:
             logger.error("pls check args")
             return False
@@ -566,7 +567,7 @@ class Client(object):
 
     """ --- MIX-tradeApi """
 
-    def mix_place_order(self, symbol, productType, marginMode, marginCoin, size, price, side, tradeSide, 
+    def mix_place_order(self, symbol, productType, marginMode, marginCoin, size, price, side, 
                         orderType, force, clientOid, reduceOnly, presetStopSurplusPrice, presetStopLossPrice):
         params = {}
         params["symbol"] = symbol
@@ -576,7 +577,7 @@ class Client(object):
         params["size"] = size
         params["price"] = price
         params["side"] = side
-        params["tradeSide"] = size
+        # params["tradeSide"] = tradeSide   no trade side for one-way-mode position mode 
         params["orderType"] = orderType
         params["force"] = force
         params["clientOid"] = clientOid
@@ -699,7 +700,7 @@ class Client(object):
         params = {}
         if symbol:
             params["symbol"] = symbol
-            return self._request_with_params(GET, MIX_ORDER_V1_URL + '/current', params)
+            return self._request_with_params(GET, MIX_ORDER_V2_URL + '/current', params)
         else:
             logger.error("pls check args")
             return False

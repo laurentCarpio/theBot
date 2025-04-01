@@ -39,6 +39,8 @@ SPOT_PLAN_V1_URL = '/api/spot/v1/plan'
 
 MIX_MARKET_V2_URL = '/api/v2/mix/market'
 MIX_ACCOUNT_V2_URL = '/api/v2/mix/account'
+MIX_ORDER_V2_URL = '/api/v2/mix/order'
+MIX_POSITION_V2_URL = '/api/v2/mix/position'
 
 MIX_MARKET_V1_URL = '/api/mix/v1/market'
 MIX_ACCOUNT_V1_URL = '/api/mix/v1/account'
@@ -59,9 +61,9 @@ REQUEST_PATH = '/user/verify'
 
 SERVER_TIMESTAMP_URL = '/api/spot/v1/public/time'
 
-# SIDE - Order direction
 NEW_BUY = "open_long"
 NEW_SELL = "open_short"
+
 BUY_CLOSE = 'close_long'
 SELL_CLOSE = 'close_short'
 PS_BUY = "long"
@@ -69,7 +71,6 @@ PS_SELL = "short"
 
 # orderType
 ORDER_TYPES = ['limit', 'market']
-ORDER_TYPE_LIMIT = 'limit'
 ORDER_TYPE_MARKET = 'market'
 ORDER_SIDES = ['long', 'short']
 
@@ -89,6 +90,7 @@ STOP_TYPE_LOSS = "loss"
 
 # timeInForceValue
 TIME_IN_FORCE_TYPES = ['normal', 'post_only', 'fok', 'ioc']
+
 # triggerType
 TRIGGER_TYPES = ['fill_price', 'market_price']
 
@@ -109,14 +111,15 @@ IS_PLAN_TYPES = ['plan', 'profit_loss']
 isPlan_plan = "plan"
 isPlan_profit_loss = "profit_loss"
 
-
 # symbolStatus
 SYMBOL_STATUS_TYPES = ['normal', 'maintain', 'off']
-
 
 PRODUCT_TYPE_UMCBL = 'umcbl'
 PRODUCT_TYPE_SUMCBL = 'sumcbl'  # demo ?
 MARGIN_COIN_USDT = 'USDT'
+MARGIN_MODE ='isolated'
+
+
 MARGIN_COIN_USDC = 'USDC'
 MARGIN_COIN_SUSDT = 'SUSDT'  # demo?
 # Websocket planType

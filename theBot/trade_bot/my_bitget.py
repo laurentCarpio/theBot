@@ -1,10 +1,9 @@
 import pandas as pd
-from trade_bot.utils.trade_logger import logger
+from trade_bot.utils.trade_logger import logger, order_logger, log_order
 import time
 import trade_bot.utils.enums as const
 from trade_bot.utils.tools import get_client_oid
 from trade_bot.utils.frequency_utils import getFreq_in_ms
-from pybitget.enums import ORDER_TYPE_LIMIT, TIME_IN_FORCE_TYPES, OPEN_SHORT, OPEN_LONG
 from pybitget.exceptions import BitgetAPIException
 from pybitget import Client
 
@@ -38,7 +37,7 @@ class MyBitget:
                 return df
             else:
                 if do_one:
-                    return pd.DataFrame(pd.Series(['CROUSDT'], name='symbol'))
+                    return pd.DataFrame(pd.Series(['ENJUSDT'], name='symbol'))
                 else:
                     df = pd.read_csv(f'{const.DATA_FOLDER}/all_tickers.csv', index_col=0)
                     logger.debug('getting tickers from the debug directory')
@@ -84,6 +83,7 @@ class MyBitget:
                 contract = self._client.mix_get_contract_config(const.PRODUCT_TYPE_USED, symbol=_symbol)
             else: 
                 contract = self._client.mix_get_contract_config(const.PRODUCT_TYPE_USED)
+
             df = pd.DataFrame(contract.get('data'))
             df = df.drop(['baseCoin','quoteCoin','feeRateUpRatio','makerFeeRate','takerFeeRate',
                       'openCostUpRatio','supportMarginCoins','symbolType','maxSymbolOrderNum',
@@ -103,9 +103,9 @@ class MyBitget:
         except BitgetAPIException as e:
             logger.error(f'getting BitgetAPIException {e} to get_usdt_available')
 
-    def get_bids_and_asks(self, symbol: str, precision='scale1', limit=50) -> pd:
+    def get_bids_and_asks(self, symbol: str, precision='scale0', limit='max') -> pd:
         try:
-            bids_asks = self._client.mix_get_merge_depth(symbol,const.PRODUCT_TYPE_USED, precision='scale1', limit=100)
+            bids_asks = self._client.mix_get_merge_depth(symbol,const.PRODUCT_TYPE_USED, precision, limit)
             return bids_asks
         except BitgetAPIException as e: 
             logger.error(f'getting BitgetAPIException {e} to get_bids_asks')
@@ -113,38 +113,23 @@ class MyBitget:
     def place_order(self, df_row: pd):
         try:
             clientOid = get_client_oid()
-            logger.info(f"ORDER: symbol = {df_row['symbol']}")
-            logger.info(f"productType = {const.PRODUCT_TYPE_USED}")
-            logger.info("marginMode = isolated")
-            logger.info(f"marginCoin = {const.MARGIN_COIN_USED}")
-            logger.info(f"size = {df_row['size']}")
-            logger.info(f"price = {df_row['price']}")
-            logger.info(f"side = {df_row['side']}")
-            logger.info(f"tradeSide = open")
-            logger.info(f"orderType = {ORDER_TYPE_LIMIT}")
-            logger.info(f"force = {TIME_IN_FORCE_TYPES[1]}")
-            logger.info(f"clientOid = {clientOid}")
-            logger.info(f"reduceOnly = NO")
-            logger.info(f"presetStopSurplusPrice = {df_row['presetStopSurplusPrice']}")
-            logger.info(f"presetStopLossPrice = {df_row['presetStopLossPrice']}")
-
-            '''     
             order = self._client.mix_place_order(symbol= df_row['symbol'],
                                                      productType= const.PRODUCT_TYPE_USED,
-                                                     marginMode= 'isolated',
+                                                     marginMode= const.MARGIN_MODE,
                                                      marginCoin= const.MARGIN_COIN_USED,
                                                      size= df_row['size'],
                                                      price=df_row['price'],
                                                      side= df_row['side'],
-                                                     tradeSide = 'open',
-                                                     orderType= ORDER_TYPE_LIMIT,
-                                                     force = TIME_IN_FORCE_TYPES[1],
+                                                     orderType= const.ORDER_TYPE_LIMIT,
+                                                     force = const.TIME_IN_FORCE_TYPES[1],
                                                      clientOid= clientOid,  # order_1
-                                                     reduceOnly= 'NO',
+                                                     reduceOnly= const.REDUCE_ONLY_NO,
                                                      presetStopSurplusPrice= df_row['presetStopSurplusPrice'],
-                                                     presetStopLossPrice= df_row['presetStopLossPrice'])
-            print(order.get('data'))'
-            '''
+                                                     presetStopLossPrice= df_row['presetStopLossPrice'])   
+            orderId = order.get('data').get('orderId')
+            msg = order.get('msg')
+            df_row['msg'] = msg
+            log_order(orderId,df_row)
 
         except BitgetAPIException as e:
             logger.error(f'{e.code}: {e.message} to get contract')

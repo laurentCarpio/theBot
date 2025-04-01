@@ -1,13 +1,12 @@
 import pandas as pd
-from trade_bot.utils.trade_logger import logger
 import pandas_ta as ta
-from pybitget.enums import OPEN_LONG, OPEN_SHORT
+import trade_bot.utils.enums as const
+from trade_bot.utils.trade_logger import logger
 from trade_bot.display.my_graph import MyGraph
 from trade_bot.utils.frequency_utils import freq_to_resample
 from trade_bot.utils.tools import adjust_price, adjust_quantity
 from trade_bot.my_bitget import MyBitget
 from trade_bot.my_strategy import MyStrategy
-import trade_bot.utils.enums as const
 
 class ExtractTransform:
     _symbol = None
@@ -177,9 +176,9 @@ class ExtractTransform:
         # and set the side after 
         df_last_rows = df1.iloc[const.STRATEGY_WINDOW:].copy()
         if df_last_rows["crossing_kcl"].any():
-            df1['side'] = OPEN_LONG
+            df1['side'] = const.OPEN_LONG
         elif df_last_rows["crossing_kcu"].any():
-            df1['side'] = OPEN_SHORT
+            df1['side'] = const.OPEN_SHORT
         else:
             df1['side'] = 'no_trade'
 
@@ -196,28 +195,6 @@ class ExtractTransform:
         df_row['highest'] = 0.0
         df_row['lowest'] = 0.0
         
-        # the estimate profit is the difference between the bbm and the close price
-        df_row['estim_profit'] = abs(df_row['bbm'] - df_row['close'])
-
-        if df1["side"].eq(OPEN_LONG).any():
-            df_row['side'] = OPEN_LONG
-            df_row['lowest'] = df1.iloc[-(int(const.MAX_MIN_VALUE_WINDOW)):, df1.columns.get_loc('low')].min()
-            df_row['presetStopLossPrice'] = df_row['lowest'] - (df_row['lowest'] * const.STOP_LOST)
-        else:
-            df_row['side'] = OPEN_SHORT
-            df_row['highest'] = df1.iloc[-(int(const.MAX_MIN_VALUE_WINDOW)):, df1.columns.get_loc('high')].max()
-            df_row['presetStopLossPrice'] = df_row['highest'] + (df_row['highest'] * const.STOP_LOST)
-
-        # bbm is the first take profit at 50% usually 
-        df_row['presetTakeProfitPrice'] = df_row['bbm']
-
-        self._set_row(df_row)
-        return self._set_price_and_validate_ratio()
-        
-    def _set_price_and_validate_ratio(self) -> bool:
-        # a changer plus tard 
-        df0 = self.get_row()
-
         contract = self._mybit.get_contract(self._symbol)
         if contract['limitOpenTime'].iloc[-1] != '-1': #if not = -1 no trade possible 
             return False 
@@ -226,6 +203,33 @@ class ExtractTransform:
         priceEndStep = float(contract['priceEndStep'].iloc[-1])
         volumePlace = int(contract['volumePlace'].iloc[-1])
         pricePlace = int(contract['pricePlace'].iloc[-1])
+
+        if df1["side"].eq(const.OPEN_LONG).any():
+            df_row['side'] = const.OPEN_LONG
+            df_row['lowest'] = df1.iloc[-(int(const.MAX_MIN_VALUE_WINDOW)):, df1.columns.get_loc('low')].min()
+            presetStopLossPrice = adjust_price(df_row['lowest'] - (df_row['lowest'] * const.STOP_LOST), priceEndStep, pricePlace)
+            
+
+        elif df1["side"].eq(const.OPEN_SHORT).any():
+            df_row['side'] = const.OPEN_SHORT
+            df_row['highest'] = df1.iloc[-(int(const.MAX_MIN_VALUE_WINDOW)):, df1.columns.get_loc('high')].max()
+            presetStopLossPrice = adjust_price(df_row['highest'] + (df_row['highest'] * const.STOP_LOST), priceEndStep, pricePlace)
+
+        df_row['presetStopLossPrice'] = presetStopLossPrice
+
+        # bbm is the first take profit at 50% usually 
+        df_row['presetStopSurplusPrice'] = adjust_price(df_row['bbm'], priceEndStep, pricePlace)
+
+        self._set_row(df_row)
+        return self._set_price_and_validate_ratio(minTradeUSDT, priceEndStep, pricePlace, volumePlace)
+        
+    def _set_price_and_validate_ratio(self, 
+                                      minTradeUSDT: float, 
+                                      priceEndStep: float, 
+                                      pricePlace : int, 
+                                      volumePlace: int) -> bool:
+        # a changer plus tard 
+        df0 = self.get_row()
 
         usdt_avail = self._mybit.get_usdt_per_trade()
         # for testing and debug trade = 8$ max  
@@ -237,30 +241,34 @@ class ExtractTransform:
 
         bids_asks = self._mybit.get_bids_and_asks(self._symbol)
         
-        if df0['side'] == OPEN_LONG:
+        if df0['side'] == const.OPEN_SHORT:
             df1 = pd.DataFrame(bids_asks.get('data')['asks'])
             #######################################################################################
-            # we want to buy at the lowest price possible
-            # the rule for now is to take the price at position 10
+            # we want to sell at the highest price possible
+            # You must place your limit sell order above or equal to the best ask price.
+            # the rule is to choice the SELL_POSITION_IN_ASKS (4th position or else) 
             ########################################################################################
-            # df0['price']  = df1.iloc[10,0]
-            df0['price']  = adjust_price(df1.iloc[10,0], priceEndStep, pricePlace)
+            df0['price']  = adjust_price(df1.iloc[const.PRICE_RANK_IN_BIDS_ASKS,0], priceEndStep, pricePlace)
             logger.info(f"{self._symbol} : price for trade is : {df0['price']}")
 
-        elif df0['side'] == OPEN_SHORT:
+        elif df0['side'] == const.OPEN_LONG:
             df1 = pd.DataFrame(bids_asks.get('data')['bids'])
             #######################################################################################
-            # we want to sell at the highest price possible
-            # the rule for now is to take the price at position 3
+            # we want to buy at the lowest price possible
+            # You must place your limit buy order below or equal to the best bid price.
+            # the rule is to choice the BUY_POSITION_IN_BIDS (4th position or else) 
             ########################################################################################
-            #df0['price']  = df1.iloc[3,0]
-            df0['price']  = adjust_price(df1.iloc[10,0], priceEndStep, pricePlace)
+            df0['price']  = adjust_price(df1.iloc[const.PRICE_RANK_IN_BIDS_ASKS,0], priceEndStep, pricePlace)
+            logger.info(f"{self._symbol} : price for trade is : {df0['price']}")
         else :
             return False
         
         df0['size'] = adjust_quantity(usdt_avail / df0['price'], volumePlace)    
 
-        if df0['side'] == OPEN_LONG:
+        # the estimate profit is the difference between the bbm and the close price
+        df0['estim_profit'] = abs(df0['bbm'] - df0['price'])
+
+        if df0['side'] == const.OPEN_LONG:
             # the ratio is calculated with the price from the asks list
             df0['ratio'] = df0['estim_profit'] / (df0['price'] - df0['presetStopLossPrice'])
         else:
@@ -269,6 +277,12 @@ class ExtractTransform:
 
         if df0['ratio'] > const.ACCEPTABLE_RATIO:
             logger.info(f"{self._symbol} :ratio {df0['ratio']} ok for trade")
+            df0['productType'] = const.PRODUCT_TYPE_USED
+            df0['marginMode'] = const.MARGIN_MODE
+            df0['marginCoin'] = const.MARGIN_COIN_USED
+            df0['orderType'] = const.ORDER_TYPE_LIMIT
+            df0['force'] = const.TIME_IN_FORCE_TYPES[1]
+            df0['reduceOnly'] = const.REDUCE_ONLY_NO
             logger.info('XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX')
             self._set_row(df0)
             return True
@@ -277,7 +291,3 @@ class ExtractTransform:
             logger.info('XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX')
             self._set_row(pd.DataFrame())
             return False
-            
-
-
-
