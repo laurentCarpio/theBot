@@ -75,82 +75,7 @@ class Client(object):
         else:
             return ""
 
-    """ --- MIX-MarkettApi """
-
-    def mix_get_vip_fee_rate(self):
-        """
-        VIP fee rate: https://bitgetlimited.github.io/apidoc/en/mix/#vip-fee-rate
-        Limit rule: 10 times/1s (IP)
-        Required: None
-        :return:
-        """
-        return self._request_without_params(GET, MIX_MARKET_V1_URL + '/contract-vip-level')
-    
-    def mix_get_contract_config(self, productType, symbol=False):
-        """
-        Get All symbols: https://bitgetlimited.github.io/apidoc/en/mix/#get-all-symbols
-        Limit rule: 20 times/1s (IP)
-        Required: productType
-        :return:
-        """
-        params = {}
-        
-        if productType:
-            params["productType"] = productType
-        else:
-            logger.error("pls check args")
-            return False
-        
-        if symbol:
-            params["symbol"] = symbol
-        return self._request_with_params(GET, MIX_MARKET_V2_URL + '/contracts', params)
-
-    def mix_get_merge_depth(self, symbol, productType, precision, limit):
-        """
-        Get Depth: https://bitgetlimited.github.io/apidoc/en/mix/#get-depth
-
-        Limit rule: 20 times/1s (IP)
-
-        Required: symbol
-
-        :param symbol: Symbol Id (Must be capitalized)
-        :type symbol: str
-        :param limit: Depth gear 5，15，50，100 default 100
-        :type limit: str
-        :return:
-        """
-        params = {}
-        if symbol and productType and precision and limit:
-            params["symbol"] = symbol
-            params["productType"] = productType
-            params["precision"] = precision
-            params["limit"] = limit
-            return self._request_with_params(GET, MIX_MARKET_V2_URL + '/merge-depth', params)
-        else:
-            logger.error("pls check args")
-            return False
-
-    def mix_get_single_symbol_ticker(self, symbol, productType):
-        """
-        Get Single Symbol Ticker: https://bitgetlimited.github.io/apidoc/en/mix/#get-single-symbol-ticker
-
-        Limit rule: 20 times/1s (IP)
-
-        Required: symbol
-
-        :param symbol: Symbol Id (Must be capitalized)
-        :type symbol: str
-        :return:
-        """
-        params = {}
-        if symbol and productType:
-            params["symbol"] = symbol
-            params["productType"] = productType
-            return self._request_with_params(GET, MIX_MARKET_V2_URL + '/ticker', params)
-        else:
-            logger.error("pls check args")
-            return False
-
+    """ --- the used Api for the bot ---"""
     def mix_get_all_tickers(self, productType):
         """
         Get All Symbol Ticker: https://bitgetlimited.github.io/apidoc/en/mix/#get-all-symbol-ticker
@@ -164,29 +89,6 @@ class Client(object):
         if productType:
             params["productType"] = productType
             return self._request_with_params(GET, MIX_MARKET_V2_URL + '/tickers', params)
-        else:
-            logger.error("pls check args")
-            return False
-
-    def mix_get_fills(self, symbol, limit=100):
-        """
-        Get recent trades: https://bitgetlimited.github.io/apidoc/en/mix/#get-fills
-
-        Limit rule: 20 times/1s (IP)
-
-        Required: symbol, limit
-
-        :param symbol: Symbol Id (Must be capitalized)
-        :type symbol: str
-        :param limit: Default limit is 100
-        :type limit: str
-        :return:
-        """
-        params = {}
-        if symbol:
-            params["symbol"] = symbol
-            params["limit"] = limit
-            return self._request_with_params(GET, MIX_MARKET_V1_URL + '/fills', params)
         else:
             logger.error("pls check args")
             return False
@@ -215,6 +117,240 @@ class Client(object):
             params["kLineType"] = kLineType
             params["limit"] = limit
             return self._request_with_params(GET, MIX_MARKET_V2_URL + '/candles', params)
+        else:
+            logger.error("pls check args")
+            return False
+    
+    def mix_get_contract_config(self, productType, symbol):
+        params = {}
+        if productType and symbol:
+            params["productType"] = productType
+            params["symbol"] = symbol
+            return self._request_with_params(GET, MIX_MARKET_V2_URL + '/contracts', params)
+        else:
+            logger.error("pls check args")
+            return False
+            
+    def mix_get_accounts(self, productType):
+        params = {}
+        if productType:
+            params['productType'] = productType
+            return self._request_with_params(GET, MIX_ACCOUNT_V2_URL + '/accounts', params)
+        else:
+            logger.error("pls check args")
+            return False
+
+    def mix_get_merge_depth(self, symbol, productType, precision, limit):
+        params = {}
+        if symbol and productType and precision and limit:
+            params["symbol"] = symbol
+            params["productType"] = productType
+            params["precision"] = precision
+            params["limit"] = limit
+            return self._request_with_params(GET, MIX_MARKET_V2_URL + '/merge-depth', params)
+        else:
+            logger.error("pls check args")
+            return False
+
+    def mix_place_order(self, symbol, productType, marginMode, marginCoin, size, price, side, 
+                        orderType, force, clientOid, reduceOnly, presetStopSurplusPrice, presetStopLossPrice):
+        params = {}
+        params["symbol"] = symbol
+        params["productType"] = productType
+        params["marginMode"] = marginMode
+        params["marginCoin"] = marginCoin
+        params["size"] = size
+        params["price"] = price
+        params["side"] = side
+        # params["tradeSide"] = tradeSide   no trade side for one-way-mode position mode 
+        params["orderType"] = orderType
+        params["force"] = force
+        params["clientOid"] = clientOid
+        params["reduceOnly"] = reduceOnly
+        params["presetStopSurplusPrice"] = presetStopSurplusPrice
+        params["presetStopLossPrice"] = presetStopLossPrice
+        return self._request_with_params(POST, MIX_ORDER_V2_URL + '/place-order', params)
+
+    def mix_set_position_mode(self, productType, posMode):
+        params = {}
+        if productType and posMode:
+            params["productType"] = productType
+            params["posMode"] = posMode
+            return self._request_with_params(POST, MIX_ACCOUNT_V2_URL + '/set-position-mode', params)
+        else:
+            logger.error("pls check args")
+            return False
+        
+    def mix_set_leverage(self, symbol, productType, marginCoin, leverage):
+        params = {}
+        if symbol and productType and marginCoin and leverage:
+            params["symbol"] = symbol
+            params["productType"] = productType
+            params["marginCoin"] = marginCoin
+            params["leverage"] = leverage
+            return self._request_with_params(POST, MIX_ACCOUNT_V2_URL + '/set-leverage', params)
+        else:
+            logger.error("pls check args")
+            return False
+ 
+    def mix_get_pending_trigger_Order(self, planType, productType, clientOid, symbol, limit=100):
+        params = {}
+        if productType and planType and clientOid and symbol:
+            params["productType"] = productType
+            params["planType"] = planType
+            params["clientOid"] = clientOid
+            params["symbol"] = symbol
+            params["limit"] = limit
+            return self._request_with_params(GET, MIX_ORDER_V2_URL + '/orders-plan-pending', params)
+        else:
+            logger.error("pls check args")
+            return False
+        
+    def mix_get_order_detail(self, symbol, productType, clientOid):
+        params = {}
+        if symbol and productType and clientOid :
+            params["symbol"] = symbol
+            params["productType"] = productType
+            params["clientOid"] = clientOid
+            return self._request_with_params(GET, MIX_ORDER_V2_URL + '/detail', params)
+        else:
+            logger.error("pls check args")
+            return False
+    
+    def mix_cancel_order(self, symbol, marginCoin, clientOid):
+        params = {}
+        if symbol and marginCoin and clientOid :
+            params["symbol"] = symbol
+            params["marginCoin"] = marginCoin
+            params["clientOid"] = clientOid
+            return self._request_with_params(POST, MIX_ORDER_V2_URL + '/cancel-order', params)
+        else:
+            logger.error("pls check args")
+            return False
+
+    def mix_modify_trigger_order(self, clientOid, productType, newSize, 
+                                 stopLossTriggerPrice,
+                                 stopLossExecutePrice,
+                                 stopLossTriggerType):
+        params = {}
+        if productType and clientOid and newSize and \
+           stopLossTriggerPrice and stopLossExecutePrice and stopLossTriggerType:
+            params["productType"] = productType
+            params["newSize"] = newSize
+            params["stopLossTriggerPrice"] = stopLossTriggerPrice
+            params["stopLossExecutePrice"] = stopLossExecutePrice
+            params["stopLossTriggerType"] = stopLossTriggerType
+            return self._request_with_params(POST, MIX_ORDER_V2_URL + '/modify-order', params)
+        else:
+            logger.error("pls check args")
+            return False
+
+######################################
+###  may be useful soon
+######################################
+
+    def mix_get_pending_orders(self, productType, orderId=None, clientOid=None, symbol=None, status=None,
+                               idLessThan=None, startTime=None, endTime=None, limit=100):
+        params = {}
+        if productType :
+            params["productType"] = productType
+            params["limit"] = limit
+        else:
+            logger.error("pls check args")
+            return False
+        
+        if orderId is not None:
+            params["orderId"] = orderId
+        if clientOid is not None:
+            params["clientOid"] = clientOid
+        if symbol is not None:
+            params["symbol"] = symbol
+        if status is not None:
+            params["status"] = status
+        if idLessThan is not None:
+            params["idLessThan"] = idLessThan
+        if startTime is not None:
+            params["startTime"] = startTime
+        if endTime is not None:
+            params["endTime"] = endTime
+
+        return self._request_with_params(GET, MIX_ORDER_V2_URL + '/orders-pending', params)
+
+    def mix_get_single_position(self, productType, symbol, marginCoin):
+        params = {}
+        if productType and symbol and marginCoin:
+            params["productType"] = productType
+            params["symbol"] = symbol
+            params["marginCoin"] = marginCoin
+            return self._request_with_params(GET, MIX_POSITION_V2_URL + '/single-position', params)
+        else:
+            logger.error("pls check args")
+            return False
+        
+    def mix_get_all_positions(self, productType, marginCoin=None):
+        params = {}
+        if productType:
+            params["productType"] = productType
+            if marginCoin is not None:
+                params["marginCoin"] = marginCoin
+            return self._request_with_params(GET, MIX_POSITION_V2_URL + '/all-position', params)
+        else:
+            logger.error("pls check args")
+            return False
+
+#######################################################################
+########     not used api for now 
+#######################################################################
+
+    def mix_get_vip_fee_rate(self):
+        """
+        VIP fee rate: https://bitgetlimited.github.io/apidoc/en/mix/#vip-fee-rate
+        Limit rule: 10 times/1s (IP)
+        Required: None
+        :return:
+        """
+        return self._request_without_params(GET, MIX_MARKET_V1_URL + '/contract-vip-level')
+    
+    def mix_get_single_symbol_ticker(self, symbol, productType):
+        """
+        Get Single Symbol Ticker: https://bitgetlimited.github.io/apidoc/en/mix/#get-single-symbol-ticker
+
+        Limit rule: 20 times/1s (IP)
+
+        Required: symbol
+
+        :param symbol: Symbol Id (Must be capitalized)
+        :type symbol: str
+        :return:
+        """
+        params = {}
+        if symbol and productType:
+            params["symbol"] = symbol
+            params["productType"] = productType
+            return self._request_with_params(GET, MIX_MARKET_V2_URL + '/ticker', params)
+        else:
+            logger.error("pls check args")
+            return False
+
+    def mix_get_fills(self, symbol, limit=100):
+        """
+        Get recent trades: https://bitgetlimited.github.io/apidoc/en/mix/#get-fills
+
+        Limit rule: 20 times/1s (IP)
+
+        Required: symbol, limit
+
+        :param symbol: Symbol Id (Must be capitalized)
+        :type symbol: str
+        :param limit: Default limit is 100
+        :type limit: str
+        :return:
+        """
+        params = {}
+        if symbol:
+            params["symbol"] = symbol
+            params["limit"] = limit
+            return self._request_with_params(GET, MIX_MARKET_V1_URL + '/fills', params)
         else:
             logger.error("pls check args")
             return False
@@ -364,20 +500,6 @@ class Client(object):
             logger.error("pls check args")
             return False
 
-    def mix_get_accounts(self, productType):
-        """
-        Get Account List: https://bitgetlimited.github.io/apidoc/en/mix/#get-account-list
-        productType: Umcbl (USDT professional contract) dmcbl (mixed contract) sumcbl (USDT professional contract simulation disk) sdmcbl (mixed contract simulation disk)
-        :return:
-        """
-        params = {}
-        if productType:
-            params['productType'] = productType
-            return self._request_with_params(GET, MIX_ACCOUNT_V2_URL + '/accounts', params)
-        else:
-            logger.error("pls check args")
-            return False
-
     def mix_get_sub_account_contract_assets(self, productType):
         """
         Get sub Account Contract Assets: https://bitgetlimited.github.io/apidoc/en/mix/#get-sub-account-contract-assets
@@ -408,26 +530,6 @@ class Client(object):
             params["openAmount"] = openAmount
             params["leverage"] = leverage
             return self._request_with_params(GET, MIX_ACCOUNT_V1_URL + '/open-count', params)
-        else:
-            logger.error("pls check args")
-            return False
-
-    def mix_adjust_leverage(self, symbol, marginCoin, leverage, holdSide=None):
-        """
-        Change Leverage: https://bitgetlimited.github.io/apidoc/en/mix/#change-leverage
-        Limit rule: 5 times/1s (uid)
-        The leverage could set to different number in fixed margin mode(holdSide is required)
-        Required: symbol, marginCoin, leverage
-
-        """
-        params = {}
-        if symbol and marginCoin and leverage:
-            params["symbol"] = symbol
-            params["marginCoin"] = marginCoin
-            params["leverage"] = leverage
-            if holdSide is not None:
-                params["holdSide"] = holdSide
-            return self._request_with_params(POST, MIX_ACCOUNT_V1_URL + '/setLeverage', params)
         else:
             logger.error("pls check args")
             return False
@@ -463,63 +565,6 @@ class Client(object):
             params["marginMode"] = marginMode
 
             return self._request_with_params(POST, MIX_ACCOUNT_V1_URL + '/setMarginMode', params)
-        else:
-            logger.error("pls check args")
-            return False
-
-    def mix_adjust_hold_mode(self, productType, holdMode):
-        """
-        Change Hold Mode: https://bitgetlimited.github.io/apidoc/en/mix/#change-hold-mode
-        Limit rule: 5 times/1s (uid)
-        Required: productType, holdMode
-        """
-        params = {}
-        if productType and holdMode:
-            params["productType"] = productType
-            params["holdMode"] = holdMode
-            return self._request_with_params(POST, MIX_ACCOUNT_V1_URL + '/setPositionMode', params)
-        else:
-            logger.error("pls check args")
-            return False
-
-    def mix_get_single_position(self, productType, symbol, marginCoin):
-        """
-            Obtain the user's single position information.
-            Get Symbol Position: https://bitgetlimited.github.io/apidoc/en/mix/#get-symbol-position
-
-            :param symbol: Name of symbol
-            :type symbol: str
-            :param marginCoin: Margin currency (Must be capitalized)
-            :type marginCoin: str
-            :return:
-        """
-        params = {}
-        if productType and symbol and marginCoin:
-            params["productType"] = productType
-            params["symbol"] = symbol
-            params["marginCoin"] = marginCoin
-            return self._request_with_params(GET, MIX_POSITION_V2_URL + '/single-position', params)
-        else:
-            logger.error("pls check args")
-            return False
-
-    def mix_get_all_positions(self, productType, marginCoin=None):
-        """
-        Obtain all position information of the user.
-        Get All Position: https://bitgetlimited.github.io/apidoc/en/mix/#get-all-position
-
-        :param productType: Umcbl (USDT professional contract) dmcbl (mixed contract) sumcbl (USDT professional contract simulation disk) sdmcbl (mixed contract simulation disk)
-        :type productType: str
-        :param marginCoin: Margin currency (Must be capitalized)
-        :type marginCoin: str
-        :return:
-        """
-        params = {}
-        if productType:
-            params["productType"] = productType
-            if marginCoin is not None:
-                params["marginCoin"] = marginCoin
-            return self._request_with_params(GET, MIX_POSITION_V1_URL + '/allPosition', params)
         else:
             logger.error("pls check args")
             return False
@@ -567,26 +612,6 @@ class Client(object):
 
     """ --- MIX-tradeApi """
 
-    def mix_place_order(self, symbol, productType, marginMode, marginCoin, size, price, side, 
-                        orderType, force, clientOid, reduceOnly, presetStopSurplusPrice, presetStopLossPrice):
-        params = {}
-        params["symbol"] = symbol
-        params["productType"] = productType
-        params["marginMode"] = marginMode
-        params["marginCoin"] = marginCoin
-        params["size"] = size
-        params["price"] = price
-        params["side"] = side
-        # params["tradeSide"] = tradeSide   no trade side for one-way-mode position mode 
-        params["orderType"] = orderType
-        params["force"] = force
-        params["clientOid"] = clientOid
-        params["reduceOnly"] = reduceOnly
-        params["presetStopSurplusPrice"] = presetStopSurplusPrice
-        params["presetStopLossPrice"] = presetStopLossPrice
-        return self._request_with_params(POST, MIX_ORDER_V2_URL + '/place-order', params)
-
-
     def mix_reversal(self, symbol, marginCoin, side, orderType,
                      size=None, clientOrderId=None, timeInForceValue='normal', reverse=False):
         """
@@ -632,27 +657,7 @@ class Client(object):
             logger.error("pls check args")
             return False
 
-    def mix_cancel_order(self, symbol, marginCoin, orderId='', clientOid=''):
-        """
-        Cancel Order: https://bitgetlimited.github.io/apidoc/en/mix/#cancel-order
-        Limit rule: 10 times/1s (uid)
-        Required: symbol, marginCoin, orderId or clientOid
-        - Order Id, int64 in string format, 'orderId' or 'clientOid' must have one
-        - Client Order Id, 'orderId' or 'clientOid' must have one
-        """
-        params = {}
-        if symbol and marginCoin and (orderId != '' or clientOid != ''):
-            params["symbol"] = symbol
-            params["marginCoin"] = marginCoin
-            if orderId != '':
-                params["orderId"] = orderId
-            elif clientOid != '':
-                params["clientOid"] = clientOid
 
-            return self._request_with_params(POST, MIX_ORDER_V1_URL + '/cancel-order', params)
-        else:
-            logger.error("pls check args")
-            return False
 
     def mix_batch_cancel_orders(self, symbol, marginCoin, orderId: list = None, clientOid: list = None):
         """ Batch Cancel Order
@@ -791,24 +796,7 @@ class Client(object):
             logger.error("pls check args")
             return False
 
-    def mix_get_order_details(self, symbol, orderId=None, clientOrderId=None):
-        """
-        Get Order Details: https://bitgetlimited.github.io/apidoc/en/mix/#get-order-details
-        Limit rule: 20 times/2s (uid)
-        Required: symbol
-        :return:
-        """
-        params = {}
-        if symbol:
-            params["symbol"] = symbol
-            if orderId is not None:
-                params["orderId"] = orderId
-            if clientOrderId is not None:
-                params["clientOid"] = clientOrderId
-            return self._request_with_params(GET, MIX_ORDER_V1_URL + '/detail', params)
-        else:
-            logger.error("pls check args")
-            return False
+
 
     def mix_get_order_fill_detail(self, symbol, orderId=None, startTime=None, endTime=None, lastEndId=None):
         """
@@ -1003,24 +991,6 @@ class Client(object):
             if holdSide is not None:
                 params["holdSide"] = holdSide
             return self._request_with_params(POST, MIX_PLAN_V1_URL + '/placePositionsTPSL', params)
-        else:
-            logger.error("pls check args")
-            return False
-
-    def mix_modify_stop_order(self, symbol, marginCoin, orderId, triggerPrice, planType):
-        """
-        Modify Stop Order: https://bitgetlimited.github.io/apidoc/en/mix/#modify-stop-order
-        Limit rule: 10 times/1s (uid)
-        Required: symbol, marginCoin, orderId, triggerPrice, planType
-        """
-        params = {}
-        if symbol and marginCoin and orderId and triggerPrice and planType:
-            params["symbol"] = symbol
-            params["marginCoin"] = marginCoin
-            params["orderId"] = orderId
-            params["triggerPrice"] = triggerPrice
-            params["planType"] = planType
-            return self._request_with_params(POST, MIX_PLAN_V1_URL + '/modifyTPSLPlan', params)
         else:
             logger.error("pls check args")
             return False

@@ -9,83 +9,83 @@ from trade_bot.my_bitget import MyBitget
 from trade_bot.my_strategy import MyStrategy
 
 class ExtractTransform:
-    _symbol = None
-    _df_data = pd.DataFrame()
-    _mybit = None
-    _myStrategy = None
-    _myGraph = None
-    _df_candidat = pd.DataFrame()
-    _candidat_freq = None
-    _df_row = pd.DataFrame()
+    __symbol = None
+    __df_data = pd.DataFrame()
+    __mybit = None
+    __my_strategy = None
+    __myGraph = None
+    __df_candidat = pd.DataFrame()
+    __candidat_freq = None
+    __df_row = pd.DataFrame()
 
     def __init__(self, symbol: str, mybit: MyBitget):
-        self._symbol = symbol
-        self._mybit = mybit
-        self._myStrat = MyStrategy(symbol)
-        self._myGraph = MyGraph(symbol)
+        self.__symbol = symbol
+        self.__mybit = mybit
+        self.__my_strategy = MyStrategy(symbol)
+        self.__myGraph = MyGraph(symbol)
 
-    def _set_row(self, row: pd):
-        self._df_row = row
+    def __set_row(self, row: pd):
+        self.__df_row = row
 
     def get_row(self) -> pd:
-        return self._df_row
+        return self.__df_row
+
+    def __set_candidat(self, df1: pd, freq: str):
+        self.__df_candidat = df1 
+        self.__candidat_freq = freq
+
+    def __get_candidat(self) -> pd:
+        return self.__df_candidat
     
     def set_data(self, df1: pd):
-        self._df_data = df1
+        self.__df_data = df1
 
     def get_data(self) -> pd:
-        return self._df_data
+        return self.__df_data
 
-    def _set_candidat(self, df1: pd, freq: str):
-        self._df_candidat = df1 
-        self._candidat_freq = freq
-
-    def _get_candidat(self) -> pd:
-        return self._df_candidat
-    
     def display_chart(self):
-        self._myGraph.show_chart()
+        self.__myGraph.show_chart()
 
     def find_candidat(self) -> bool:
         for index, freq in enumerate(const.MY_FREQUENCY_LIST):
             logger.info('###########################################')
-            logger.info(f'{self._symbol} : validation at frequency {freq}')
-            self.set_data(self._mybit.get_candles(self._symbol, freq))
-            if self._prepare_data_for(freq_to_resample(freq)):
-                if self._myStrat.validate_rules(self._df_data.iloc[const.STRATEGY_WINDOW:].copy()):
+            logger.info(f'{self.__symbol} : validation at frequency {freq}')
+            self.set_data(self.__mybit.get_candles(self.__symbol, freq))
+            if self.__prepare_data_for(freq_to_resample(freq)):
+                if self.__my_strategy.validate_rules(self.__df_data.iloc[const.STRATEGY_WINDOW:].copy()):
                     # the next good candidat replace the last one found
-                    logger.info(f'{self._symbol} : good candidat at this {freq}')
-                    self._set_candidat(self.get_data(), freq)
-                    self._myGraph.set_candidat(self.get_data(), freq)
+                    logger.info(f'{self.__symbol} : good candidat at this {freq}')
+                    self.__set_candidat(self.get_data(), freq)
+                    self.__myGraph.set_candidat(self.get_data(), freq)
                     # for debug only 
-                    # self.display_chart()
+                    #self.display_chart()
                 else:
-                    logger.debug(f'{self._symbol} : bad candidat at this {freq}')
-                    #self._myGraph.set_candidat(self.get_data(), freq)
+                    logger.debug(f'{self.__symbol} : bad candidat at this {freq}')
+                    #self.__myGraph.set_candidat(self.get_data(), freq)
                     # for debug only 
-                    # self.display_chart()
+                    #self.display_chart()
             else:
-                logger.debug(f'{self._symbol} : not enough data at this {freq}')
+                logger.debug(f'{self.__symbol} : not enough data at this {freq}')
         
-        return False if self._get_candidat().empty else True
+        return False if self.__get_candidat().empty else True
                      
-    def _prepare_data_for(self, resample: str) -> bool:
+    def __prepare_data_for(self, resample: str) -> bool:
         df1 = self.get_data().copy()
         if len(df1.columns) < 7 or len(df1) < const.MIN_CANDLES_FOR_INDICATORS:
-            logger.debug(f'{self._symbol} : empty dataframe or not enough candles to validate the strategy')
+            logger.debug(f'{self.__symbol} : empty dataframe or not enough candles to validate the strategy')
             return False
         else :
             df1 = df1.drop(['volume Currency'], axis= 1)
             df1['Date'] = pd.to_datetime(pd.to_numeric(df1['Date']), unit="ms")
             df1.set_index("Date", inplace=True)
             df1 = df1.resample(resample).ffill()
-            logger.debug(f'{self._symbol} : ohclv processed at {df1.index.freq} index frequency')
+            logger.debug(f'{self.__symbol} : ohclv processed at {df1.index.freq} index frequency')
             for col in df1.columns[:]:
                 df1[col] = pd.to_numeric(df1[col])
-            df1['symbol'] = self._symbol
-            return self._calculate_indicators(df1)
+            df1['symbol'] = self.__symbol
+            return self.__calculate_indicators(df1)
             
-    def _calculate_indicators(self, df1: pd) -> bool:
+    def __calculate_indicators(self, df1: pd) -> bool:
         # longueur = 21
         # source fermeture
         df1.ta.hma(close=df1['close'],
@@ -124,10 +124,10 @@ class ExtractTransform:
                                 'KCUe_20_2.0': 'kcu'},
                        inplace=True)
 
-        logger.debug(f'{self._symbol} : all indicators has been calculated')
-        return self._add_intersection_dot(df1)
+        logger.debug(f'{self.__symbol} : all indicators has been calculated')
+        return self.__add_intersection_dot(df1)
 
-    def _add_intersection_dot(self, df1: pd) -> bool:
+    def __add_intersection_dot(self, df1: pd) -> bool:
         df1['candles_color'] = 'red'
         mask = df1['close'] > df1['open']
         df1.loc[mask, 'candles_color'] = 'green'
@@ -182,34 +182,46 @@ class ExtractTransform:
         else:
             df1['side'] = 'no_trade'
 
-        logger.debug(f'{self._symbol} all the crossing and touching have been added')
+        logger.debug(f'{self.__symbol} all the crossing and touching have been added')
         self.set_data(df1)
         return True
 
     def prep_row(self) -> bool:
-        df1 = self._get_candidat().copy()        
-        #df1 = df1.drop(['crossing_kcl','crossing_kcu','touching_bbu','crossing_hma'],axis=1)
+        df1 = self.__get_candidat().copy()        
+        df1 = df1.drop(['crossing_kcl','crossing_kcu','touching_bbu','crossing_hma'],axis=1)
         
         # get the last row 
         df_row = df1.iloc[-1].copy()
+
+        # add the frequency where the strategy was validated 
+        df_row['freq'] = df1.index.freq.nanos
+
         df_row['highest'] = 0.0
         df_row['lowest'] = 0.0
-        
-        contract = self._mybit.get_contract(self._symbol)
+
+        # get future contract details (minTradeUSDT, priceEndStep, volumePlace, pricePlace, limitOpenTime)
+        contract = self.__mybit.get_contract(self.__symbol)
+        if contract is None:
+            return False
+
+        # validate that the limit open time = '-1' 
+        # -1 means normal; other values indicate that the symbol is under maintenance or 
+        # to be maintained and trading is prohibited after the specified time.
         if contract['limitOpenTime'].iloc[-1] != '-1': #if not = -1 no trade possible 
             return False 
-        
+
         minTradeUSDT = float(contract['minTradeUSDT'].iloc[-1])
         priceEndStep = float(contract['priceEndStep'].iloc[-1])
         volumePlace = int(contract['volumePlace'].iloc[-1])
         pricePlace = int(contract['pricePlace'].iloc[-1])
 
+        # set the stop lost for OPEN_LONG
         if df1["side"].eq(const.OPEN_LONG).any():
             df_row['side'] = const.OPEN_LONG
             df_row['lowest'] = df1.iloc[-(int(const.MAX_MIN_VALUE_WINDOW)):, df1.columns.get_loc('low')].min()
             presetStopLossPrice = adjust_price(df_row['lowest'] - (df_row['lowest'] * const.STOP_LOST), priceEndStep, pricePlace)
             
-
+        # set the stop lost for OPEN_SHORT
         elif df1["side"].eq(const.OPEN_SHORT).any():
             df_row['side'] = const.OPEN_SHORT
             df_row['highest'] = df1.iloc[-(int(const.MAX_MIN_VALUE_WINDOW)):, df1.columns.get_loc('high')].max()
@@ -217,29 +229,27 @@ class ExtractTransform:
 
         df_row['presetStopLossPrice'] = presetStopLossPrice
 
-        # bbm is the first take profit at 50% usually 
+        # set the take profit at the bbm value as a first take profit step 
         df_row['presetStopSurplusPrice'] = adjust_price(df_row['bbm'], priceEndStep, pricePlace)
 
-        self._set_row(df_row)
-        return self._set_price_and_validate_ratio(minTradeUSDT, priceEndStep, pricePlace, volumePlace)
+        self.__set_row(df_row)
+
+        # get the 2% usdt amount available for the trade
+        usdt_avail = self.__mybit.get_my_account().get_usdt_per_trade(minTradeUSDT)
+        if usdt_avail is None:
+            return False
+        return self.__set_price_and_validate_ratio(usdt_avail, priceEndStep, pricePlace, volumePlace)
         
-    def _set_price_and_validate_ratio(self, 
-                                      minTradeUSDT: float, 
+    def __set_price_and_validate_ratio(self, 
+                                      usdt_avail: float, 
                                       priceEndStep: float, 
                                       pricePlace : int, 
                                       volumePlace: int) -> bool:
-        # a changer plus tard 
+
         df0 = self.get_row()
-
-        usdt_avail = self._mybit.get_usdt_per_trade()
-        # for testing and debug trade = 8$ max  
-        usdt_avail = float(8.0)
         
-        # if not enough money to trade 
-        if usdt_avail < 0.0 or usdt_avail < minTradeUSDT:   
-            return False
-
-        bids_asks = self._mybit.get_bids_and_asks(self._symbol)
+        # get the bids and asks list 
+        bids_asks = self.__mybit.get_bids_and_asks(self.__symbol)
         
         if df0['side'] == const.OPEN_SHORT:
             df1 = pd.DataFrame(bids_asks.get('data')['asks'])
@@ -249,7 +259,7 @@ class ExtractTransform:
             # the rule is to choice the SELL_POSITION_IN_ASKS (4th position or else) 
             ########################################################################################
             df0['price']  = adjust_price(df1.iloc[const.PRICE_RANK_IN_BIDS_ASKS,0], priceEndStep, pricePlace)
-            logger.info(f"{self._symbol} : price for trade is : {df0['price']}")
+            logger.info(f"{self.__symbol} : price for trade is : {df0['price']}")
 
         elif df0['side'] == const.OPEN_LONG:
             df1 = pd.DataFrame(bids_asks.get('data')['bids'])
@@ -259,7 +269,7 @@ class ExtractTransform:
             # the rule is to choice the BUY_POSITION_IN_BIDS (4th position or else) 
             ########################################################################################
             df0['price']  = adjust_price(df1.iloc[const.PRICE_RANK_IN_BIDS_ASKS,0], priceEndStep, pricePlace)
-            logger.info(f"{self._symbol} : price for trade is : {df0['price']}")
+            logger.info(f"{self.__symbol} : price for trade is : {df0['price']}")
         else :
             return False
         
@@ -276,7 +286,7 @@ class ExtractTransform:
             df0['ratio'] = df0['estim_profit']  / (df0['presetStopLossPrice'] - df0['price'])
 
         if df0['ratio'] > const.ACCEPTABLE_RATIO:
-            logger.info(f"{self._symbol} :ratio {df0['ratio']} ok for trade")
+            logger.info(f"{self.__symbol} :ratio {df0['ratio']} ok for trade")
             df0['productType'] = const.PRODUCT_TYPE_USED
             df0['marginMode'] = const.MARGIN_MODE
             df0['marginCoin'] = const.MARGIN_COIN_USED
@@ -284,10 +294,10 @@ class ExtractTransform:
             df0['force'] = const.TIME_IN_FORCE_TYPES[1]
             df0['reduceOnly'] = const.REDUCE_ONLY_NO
             logger.info('XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX')
-            self._set_row(df0)
+            self.__set_row(df0)
             return True
         else:
-            logger.info(f"{self._symbol} :ratio {df0['ratio']} failed for trade")
+            logger.info(f"{self.__symbol} :ratio {df0['ratio']} failed for trade")
             logger.info('XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX')
-            self._set_row(pd.DataFrame())
+            self.__set_row(pd.DataFrame())
             return False

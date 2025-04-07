@@ -8,10 +8,9 @@ from threading import Timer
 from zlib import crc32
 import hmac
 import base64
-
 import websocket
 from typing import Optional
-from pybitget.enums import GET, REQUEST_PATH, CONTRACT_WS_URL
+from pybitget.enums import GET, REQUEST_PATH, CONTRACT_WS_PUBLIC_URL
 from pybitget import logger
 
 WS_OP_LOGIN = 'login'
@@ -22,20 +21,24 @@ WS_OP_UNSUBSCRIBE = "unsubscribe"
 def handle(message):
     logger.info(message)
 
-
 def handel_error(message):
     logger.error(message)
-
 
 def create_sign(message, secret_key):
     mac = hmac.new(bytes(secret_key, encoding='utf8'), bytes(message, encoding='utf-8'), digestmod='sha256')
     d = mac.digest()
     return str(base64.b64encode(d), 'utf8')
 
-
 def pre_hash(timestamp, method, request_path):
     return str(timestamp) + str.upper(method) + str(request_path)
 
+def build_subscribe_req(instType, channel, third_key, third_value):
+    if third_key == 'coin':
+        return SubscribeReq(instType, channel, coin=third_value)
+    elif third_key == 'instId':
+        return SubscribeReq(instType, channel, third_value)
+    else:
+        raise ValueError("Unsupported third_key")
 
 class BitgetWsClient:
     def __init__(self,
@@ -59,7 +62,7 @@ class BitgetWsClient:
         self.__ws_client = None
 
         if ws_url is None:
-            self.STREAM_URL = CONTRACT_WS_URL
+            self.STREAM_URL = CONTRACT_WS_PUBLIC_URL
         else:
             self.STREAM_URL = ws_url
         self.verbose = verbose
@@ -135,7 +138,8 @@ class BitgetWsClient:
 
         if listener:
             for chanel in channels:
-                chanel.inst_type = str(chanel.inst_type).lower()
+                #chanel.instType = str(chanel.instType).lower()
+                chanel.instType = str(chanel.instType)
                 self.__scribe_map[chanel] = listener
 
         for channel in channels:
@@ -166,8 +170,8 @@ class BitgetWsClient:
     def __on_message(self, ws, message):
 
         if message == 'pong':
-            # if self.verbose:
-            #     logger.info("Keep connected: %s" % message)
+            if self.verbose:
+                 logger.info("Keep connected: %s" % message)
             return
         json_obj = json.loads(message)
         if "code" in json_obj and json_obj.get("code") != 0:
@@ -177,7 +181,7 @@ class BitgetWsClient:
 
         if "event" in json_obj and json_obj.get("event") == "login":
             if self.verbose:
-                logger.debug("login msg: %s" % message)
+                logger.debug("login msg : %s" % message)
             self.__login_status = True
             return
         listenner = None
@@ -197,7 +201,12 @@ class BitgetWsClient:
         return BooksInfo(a_dict['asks'], a_dict['bids'], a_dict['checksum'])
 
     def __dict_to_subscribe_req(self, a_dict):
-        return SubscribeReq(a_dict['instType'], a_dict['channel'], a_dict['instId'])
+        if 'coin' in a_dict:
+            return SubscribeReq(a_dict['instType'], a_dict['channel'], coin=a_dict['coin'])
+        elif 'instId' in a_dict:
+            return SubscribeReq(a_dict['instType'], a_dict['channel'], a_dict['instId'])
+        else:
+            raise ValueError("a_dict must contain either 'coin' or 'instId'")
 
     def get_listener(self, json_obj):
         try:
@@ -233,7 +242,7 @@ class BitgetWsClient:
         self.__login_status = False
         self.__connection = False
         self.__ws_client.close()
-
+        
     def __check_sum(self, json_obj):
         # noinspection PyBroadException
         try:
@@ -324,27 +333,34 @@ class BooksInfo:
             return checknum - int_max * 2 - 2
         return checknum
 
-
 class SubscribeReq:
 
-    def __init__(self, inst_type, channel, instId):
-        self.inst_type = inst_type
+    def __init__(self, instType, channel, *args, **kwargs):
+        self.instType = instType
         self.channel = channel
-        self.inst_id = instId
+
+        # Handle either instId as positional or coin as keyword
+        if args:
+            self.instId = args[0]
+            self.coin = None
+        elif 'coin' in kwargs:
+            self.coin = kwargs['coin']
+            self.instId = None
+        else:
+            raise ValueError("Either instId or coin must be provided")
 
     def __eq__(self, other) -> bool:
         return self.__dict__ == other.__dict__
 
     def __hash__(self) -> int:
-        return hash(self.inst_type + self.channel + self.inst_id)
-
+        identifier = ('instId', self.instId) if self.instId is not None else ('coin', self.coin)
+        return hash((self.instType, self.channel, identifier))
 
 class BaseWsReq:
 
     def __init__(self, op, args):
         self.op = op
         self.args = args
-
 
 class WsLoginReq:
 

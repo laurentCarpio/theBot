@@ -20,7 +20,9 @@ DELETE = "DELETE"
 API_URL = 'https://api.bitget.com'
 
 # ws Url
-CONTRACT_WS_URL = 'wss://ws.bitget.com/mix/v1/stream'
+#CONTRACT_WS_URL = 'wss://ws.bitget.com/mix/v1/stream'
+CONTRACT_WS_PUBLIC_URL = 'wss://ws.bitget.com/v2/ws/public'
+CONTRACT_WS_PRIVATE_URL  = 'wss://ws.bitget.com/v2/ws/private'
 
 # ########################################
 # ##############【spot url】###############

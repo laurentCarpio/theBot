@@ -1,75 +1,48 @@
-import time
-import requests
 import threading
+import time
+from bitget_api import Client  # Assuming this is the correct import
+import const  # Your constants file
 
-# Bitget API details
-API_KEY = 'your_api_key'
-API_SECRET = 'your_api_secret'
-PASSPHRASE = 'your_passphrase'
+# Global instance of my_bitget (initialized once)
+class MyBitget:
+    def __init__(self):
+        self.client = Client(const.API_KEY, const.SECRET_KEY, const.API_PASSPHRASE, verbose=True)
 
-# Trading parameters
-symbol = 'BTCUSDT'
-entry_price = 70000  # Example entry price
-take_profit_1 = 70500  # TP for 50%
-take_profit_2 = 71000  # TP for remaining 50%
-stop_loss = 69500  # Initial stop loss
+    def get_account_info(self):
+        return self.client.get_account_info()
 
-# Quantity (in BTC)
-total_quantity = 0.02
-first_tp_quantity = total_quantity / 2
-remaining_quantity = total_quantity / 2
+    def place_order(self, symbol, side, price, size):
+        return self.client.place_order(symbol=symbol, side=side, price=price, size=size)
 
-# Function to place an order
-def place_order(side, quantity, price=None, tp=None, sl=None):
-    order_data = {
-        "side": side,
-        "symbol": symbol,
-        "quantity": quantity,
-        "price": price,
-        "takeProfit": tp,
-        "stopLoss": sl
-    }
-    # Simulate API request
-    response = requests.post('https://api.bitget.com/api/v2/order', json=order_data)
-    return response.json()
+# Create a single global instance
+my_bitget = MyBitget()
 
-# Function to monitor open trade
 def monitor_trade():
-    global stop_loss
-
     while True:
-        # Check if first TP is hit
-        current_price = float(requests.get('https://api.bitget.com/api/v2/ticker', params={'symbol': symbol}).json()['price'])
+        try:
+            account_info = my_bitget.get_account_info()
+            print("Monitoring Trade:", account_info)
+        except Exception as e:
+            print("Error in monitor_trade:", e)
+        time.sleep(5)  # Avoid spamming API requests
 
-        if current_price >= take_profit_1:
-            print("First Take Profit Hit. Closing 50%.")
-            place_order('sell', first_tp_quantity)
-
-            # Adjust SL to entry price for remaining 50%
-            stop_loss = entry_price
-            print("Adjusting SL to Entry Price.")
-
-            # Set new TP for remaining 50%
-            response = place_order('sell', remaining_quantity, tp=take_profit_2, sl=stop_loss)
-            print("New TP/SL Set:", response)
-            break
-
-        time.sleep(5)
-
-# Function to find trading opportunities
 def find_opportunities():
     while True:
-        # Placeholder logic for finding opportunities
-        print("Scanning for trading opportunities...")
-        time.sleep(10)
-
-# Place initial order
-response = place_order('buy', total_quantity, entry_price, tp=take_profit_1, sl=stop_loss)
-print("Order placed:", response)
+        try:
+            # Example trade opportunity check
+            print("Checking for trade opportunities...")
+            my_bitget.place_order("BTCUSDT", "buy", 68000, 0.01)
+        except Exception as e:
+            print("Error in find_opportunities:", e)
+        time.sleep(10)  # Simulate some delay
 
 # Run both functions in parallel
-trade_thread = threading.Thread(target=monitor_trade)
-trade_thread.start()
+trade_thread = threading.Thread(target=monitor_trade, daemon=True)
+opportunity_thread = threading.Thread(target=find_opportunities, daemon=True)
 
-opportunity_thread = threading.Thread(target=find_opportunities)
+trade_thread.start()
 opportunity_thread.start()
+
+# Keep the main thread alive
+while True:
+    time.sleep(1)
