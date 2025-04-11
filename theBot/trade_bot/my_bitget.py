@@ -4,7 +4,7 @@ import json
 import trade_bot.utils.enums as const
 from trade_bot.my_account import MyAccount
 from trade_bot.utils.trade_logger import logger, log_open_order
-from trade_bot.utils.tools import get_client_oid, has_non_empty_column
+from trade_bot.utils.tools import get_client_oid, substract_one_unit, return_the_close_from
 from trade_bot.utils.frequency_utils import getFreq_in_ms
 from pybitget.stream import BitgetWsClient, build_subscribe_req, handel_error
 from pybitget.exceptions import BitgetAPIException
@@ -37,10 +37,13 @@ class MyBitget:
                                           verbose=True).error_listener(handel_error).build()
         
         self.__channel_handlers = {"account": self.on_account_message,
-                                   "ticker": self.on_ticker_message,
+                                   "orders-algo": self.on_orders_algo_message,
                                    "orders": self.on_orders_message
                                    }
-        channels = ([build_subscribe_req("USDT-FUTURES", "account", "coin", "default")])
+        channels = ([build_subscribe_req("USDT-FUTURES", "account", "coin", "default"),
+                     #build_subscribe_req("USDT-FUTURES", "orders", "instId", "default"),
+                     build_subscribe_req("USDT-FUTURES", "orders-algo", "instId", "default")])
+
         self.__client_ws.subscribe(channels, self._on_message)
         # should run once and for all for the bitget account
         #self.__set_leverage_for_all_pairs()
@@ -63,12 +66,22 @@ class MyBitget:
 
     def on_account_message(self, data):
         self.__my_account.update(data)
-        logger.info(f"Account message: {data}")
+        logger.debug(f"Account message: {data}")
 
-    def on_ticker_message(self, data):
-        logger.info(f"Ticker message: {data}")
+    def on_orders_algo_message(self, data):
+        logger.info(f"order trigger channel received : {data}")
+        plan = data.get('data')[0]
+        logger.info(f"order trigger channel data[0] received : {plan}")
+        #if plan['planType'] == 'tp':
+        #    logger.info(f" the tp_plan:  {plan['planType']}")
+        #    if const.ORDER_STATUS_LIVE == plan['status']:
+        #        # self.__update_profit_plan_size_from_trigger(plan)
+        #else:
+        #    logger.info("we pass over the __update_profit_plan_size_from_trigger")
 
     def on_orders_message(self, data):
+        message_data = data.get('data')[0]
+        logger.info(f" the data from the order publisher {message_data}")
         logger.info(f"Orders message: {data}")
     
     def get_my_account(self):
@@ -96,18 +109,19 @@ class MyBitget:
             except BitgetAPIException as e:
                 time.sleep(1)  # Add delay to avoid API rate limits 
 
-    def getAllTickers(self, do_call=False, do_save=False, do_one=True) -> pd:
+    def getAllTickers(self, do_call=True, do_save=False, do_one=False) -> pd:
         try:
             if do_call:
                 tickers = self.__client_api.mix_get_all_tickers(const.PRODUCT_TYPE_USED)
                 df = pd.DataFrame(tickers.get('data'))
+                shuffled_df = df.sample(frac=1).reset_index(drop=True)
                 logger.debug('getting all tickers from bitget')
                 if do_save:
                     df.to_csv(f'{const.DATA_DIR}/all_tickers.csv', index=True)
-                return df
+                return shuffled_df
             else:
                 if do_one:
-                    return pd.DataFrame(pd.Series(['DOGSUSDT'], name='symbol'))
+                    return pd.DataFrame(pd.Series(['COSUSDT'], name='symbol'))
                 else:
                     df = pd.read_csv(f'{const.DATA_DIR}/all_tickers.csv', index_col=0)
                     logger.debug('getting tickers from the debug directory')
@@ -125,7 +139,9 @@ class MyBitget:
                 endTime = int(time.time() * 1000)
                 startTime = endTime - const.MIN_CANDLES_FOR_INDICATORS * getFreq_in_ms(granularity)
                 _candles = self.__client_api.mix_get_candles(symbol, const.PRODUCT_TYPE_USED, granularity,
-                                                       startTime, endTime)
+                                                       startTime, endTime,
+                                                       const.KLINE_TYPE, 
+                                                       const.MIN_CANDLES_FOR_INDICATORS)
                 columns = ['Date', 'open', 'high', 'low', 'close',
                            'volume', 'volume Currency']
                 df = pd.DataFrame(_candles.get('data'), columns=columns)
@@ -147,35 +163,14 @@ class MyBitget:
             logger.error(f'{e.args} to read or write files for {symbol}')
             return pd.DataFrame() # return empty df
     
-    def get_candles_for_trigger_order(self, symbol: str, granularity: str) -> pd:
-        try:
-            # Get the current timestamp in milliseconds
-            endTime = int(time.time() * 1000)
-            startTime = endTime - const.MIN_CANDLES_FOR_INDICATORS * getFreq_in_ms(granularity)
-            candles = self._client__api.mix_get_candles(symbol, const.PRODUCT_TYPE_USED, granularity,
-                                                    startTime, endTime)
-            columns = ['Date', 'open', 'high', 'low', 'close',
-                        'volume', 'volume Currency']
-            df = pd.DataFrame(candles.get('data'), columns=columns)
-            logger.debug(f'{symbol} : getting ohclv data for trigger order')
-            return df
-        except BitgetAPIException as e:
-            logger.error(f'{e.code}: {e.message} for get candles for trigger order')
-
     def get_contract(self, symbol) -> pd:
         try:
             contract = self.__client_api.mix_get_contract_config(const.PRODUCT_TYPE_USED, symbol)
-            df = pd.DataFrame(contract.get('data'))
-            if has_non_empty_column(df, ['limitOpenTime','minTradeUSDT','priceEndStep','volumePlace','pricePlace']):
-                logger.debug(f'get contract for {symbol} msg : {contract.get('msg')}')
-                return df
-            else :
-                logger.debug(f'get contract for {symbol} msg : {contract.get('msg')} but has column(s) empty')
-                return None
+            return pd.DataFrame(contract.get('data'))
         except BitgetAPIException as e:
             logger.error(f'{e.code}: {e.message} to get contract')
             return None
-
+        
     def get_bids_and_asks(self, symbol: str, precision='scale0', limit='max') -> pd:
         try:
             bids_asks = self.__client_api.mix_get_merge_depth(symbol,const.PRODUCT_TYPE_USED, precision, limit)
@@ -186,82 +181,68 @@ class MyBitget:
       
     def place_order(self, df_row: pd):
         try: 
-            df_row['clientOid'] = get_client_oid()
-            
-            order = self.__client_api.mix_place_order(symbol= df_row['symbol'],
-                                                     productType= const.PRODUCT_TYPE_USED,
-                                                     marginMode= const.MARGIN_MODE,
-                                                     marginCoin= const.MARGIN_COIN_USED,
+            df_row['clientOid'] = get_client_oid(const.CLIENT_0ID_ORDER)
+            log_open_order("before the call",'ORDER', df_row)
+            order = self.__client_api.mix_root_place_order(symbol= df_row['symbol'],
+                                                     productType= df_row['productType'],
+                                                     marginMode= df_row['marginMode'],
+                                                     marginCoin= df_row['marginCoin'],
                                                      size= df_row['size'],
                                                      price=df_row['price'],
                                                      side= df_row['side'],
-                                                     orderType= const.ORDER_TYPE_LIMIT,
-                                                     force = const.TIME_IN_FORCE_TYPES[1],
+                                                     orderType= df_row['orderType'],
+                                                     force = df_row['force'],
                                                      clientOid= df_row['clientOid'],
-                                                     reduceOnly= const.REDUCE_ONLY_NO,
-                                                     presetStopSurplusPrice= df_row['presetStopSurplusPrice'],
-                                                     presetStopLossPrice= df_row['presetStopLossPrice'])   
-            df_row['orderId'] = order.get('data').get('orderId')
+                                                     reduceOnly= df_row['reduceOnly'])   
+            
+            df_row['orderId_create'] = order.get('data').get('orderId')
             df_row['request_time'] = order.get('requestTime')
-            log_open_order(order.get('msg'),df_row)
-
+            log_open_order(order.get('msg'),'ORDER', df_row)
         except BitgetAPIException as e:
-            logger.error(f'{e.code}: {e.message} to get contract')
-            return None
-    
-    def get_order_detail(self, symbol, clientOid):
-        try:
-            order_detail = self.__client_api.mix_get_order_detail(symbol, const.PRODUCT_TYPE_USED, clientOid)
-            logger.debug(f"get order detail for clientOId : {clientOid} msg : {order_detail.get('msg')}")
-            return order_detail.get('data')
-        except BitgetAPIException as e:
-            logger.error(f'{e.code}: {e.message} to get order detail')
-            return None
-    
-    def cancel_order(self, symbol, clientOid):
-        try:
-            cancel = self.__client_api.mix_cancel_order(self, 
-                                                  symbol= symbol, 
-                                                  marginCoin= const.MARGIN_COIN_USED,  
-                                                  clientOid=clientOid)
-            msg = cancel.get('msg')
-            logger.debug(f"cancel order for clientOId : {clientOid} msg :{msg}")
-            return msg
-        except BitgetAPIException as e:
-            logger.error(f'{e.code}: {e.message} to get tp and sl orders')
-            return None       
-
-    def get_trigger_order(self, symbol: str, clientOid: str, stop_loss=False, take_profit=False) -> list:
-        if stop_loss and take_profit:
-            plan_types = const.SL_AND_TP_PLAN_TYPES
-        elif stop_loss and not take_profit:
-            plan_types = const.STOP_LOSS_PLAN_TYPES
-        else:
-            plan_types = const.TAKE_PROFIT_PLAN_TYPES
-
-        try:
-            trigger = self.__client_api.mix_get_pending_trigger_Order(plan_types, const.PRODUCT_TYPE_USED, 
-                                                            clientOid, symbol)
-            logger.debug(f"cancel order for clientOId : {clientOid} msg :{trigger.get('msg')}") 
-            return trigger.get('data').get('entrustedList')
-        except BitgetAPIException as e:
-            logger.error(f'{e.code}: {e.message} to get stop loss orders')
-            return None
-    
-    def modify_sl(self, clientOid, newSize, stopLossTriggerPrice, stopLossExecutePrice):
-        try:
-            new_sl = self.__client_api.mix_modify_trigger_order(clientOid,
-                                                           const.PRODUCT_TYPE_USED,
-                                                           newSize,
-                                                           stopLossTriggerPrice,
-                                                           stopLossExecutePrice,
-                                                           const.TRIGGER_TYPES[0])
-            #'stopLossTriggerPrice': '0.0932',
-            #'stopLossExecutePrice': '0.0930',  // or whatever price you want to execute at
-            #'stopLossTriggerType': 'fill_price'
-
-            logger.debug(f"modify sl : {clientOid} msg :{new_sl.get('msg')}")
-        except BitgetAPIException as e:
-            logger.error(f'{e.code}: {e.message} to modify sl')
+            logger.error(f'{e.code}: {e.message} to place order')
             return None
         
+        # put a sleep to get a chance of the order to be executed before opening tp and sl 
+        time.sleep(60)
+
+        try:    
+            if order.get('msg') == 'success':
+                sl_clientOid = get_client_oid(const.CLIENT_0ID_STOP_LOSS)
+                sl = self.__client_api.mix_tp_or_sl_plan_order(const.STOP_LOSS_PLAN_TYPE, 
+                                                            df_row['symbol'], 
+                                                            productType= df_row['productType'],
+                                                            marginMode= df_row['marginMode'],
+                                                            marginCoin= df_row['marginCoin'],
+                                                            size= df_row['size'], 
+                                                            triggerPrice = df_row['presetStopLossPrice'],
+                                                            triggerType = const.TRIGGER_TYPES[1],
+                                                            side = return_the_close_from(df_row['side']),
+                                                            orderType= df_row['orderType'],
+                                                            clientOID = sl_clientOid) 
+                
+                logger.info(f"stop loss order status :{sl.get('msg')} with clientOid = {sl_clientOid} and orderId = {sl.get('data').get('orderId')}")
+                df_row['orderId_sl'] = sl.get('data').get('orderId')
+                log_open_order(sl.get('msg'),'SL', df_row)
+
+                tp_clientOid = get_client_oid(const.CLIENT_0ID_TAKE_PROFIT)
+                tp = self.__client_api.mix_tp_or_sl_plan_order(const.TAKE_PROFIT_PLAN_TYPE, 
+                                                            df_row['symbol'], 
+                                                            productType= df_row['productType'],
+                                                            marginMode= df_row['marginMode'],
+                                                            marginCoin= df_row['marginCoin'],
+                                                            size= str(float(df_row['size'])/2), 
+                                                            triggerPrice = df_row['presetStopSurplusPrice'],
+                                                            triggerType = const.TRIGGER_TYPES[1],
+                                                            side = return_the_close_from(df_row['side']),
+                                                            orderType= df_row['orderType'],
+                                                            clientOID = tp_clientOid)                                                             
+
+                logger.info(f"stop loss order status :{tp.get('msg')} with clientOid = {tp_clientOid} and orderId = {tp.get('data').get('orderId')}")
+                df_row['orderId_tp'] = tp.get('data').get('orderId')
+                log_open_order(tp.get('msg'),'TP', df_row)
+
+        except BitgetAPIException as e:
+            logger.error(f'{e.code}: {e.message} to place order tp and sl')
+            return None
+
+                

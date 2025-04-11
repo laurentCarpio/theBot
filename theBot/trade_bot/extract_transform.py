@@ -4,8 +4,8 @@ import trade_bot.utils.enums as const
 from trade_bot.utils.trade_logger import logger
 from trade_bot.display.my_graph import MyGraph
 from trade_bot.utils.frequency_utils import freq_to_resample
-from trade_bot.utils.tools import adjust_price, adjust_quantity
 from trade_bot.my_bitget import MyBitget
+from trade_bot.my_contract import MyContract
 from trade_bot.my_strategy import MyStrategy
 
 class ExtractTransform:
@@ -198,55 +198,38 @@ class ExtractTransform:
 
         df_row['highest'] = 0.0
         df_row['lowest'] = 0.0
-
-        # get future contract details (minTradeUSDT, priceEndStep, volumePlace, pricePlace, limitOpenTime)
-        contract = self.__mybit.get_contract(self.__symbol)
-        if contract is None:
+        
+        my_contract = MyContract(self.__symbol, self.__mybit)
+        if my_contract is None:
             return False
 
-        # validate that the limit open time = '-1' 
-        # -1 means normal; other values indicate that the symbol is under maintenance or 
-        # to be maintained and trading is prohibited after the specified time.
-        if contract['limitOpenTime'].iloc[-1] != '-1': #if not = -1 no trade possible 
-            return False 
-
-        minTradeUSDT = float(contract['minTradeUSDT'].iloc[-1])
-        priceEndStep = float(contract['priceEndStep'].iloc[-1])
-        volumePlace = int(contract['volumePlace'].iloc[-1])
-        pricePlace = int(contract['pricePlace'].iloc[-1])
-
         # set the stop lost for OPEN_LONG
-        if df1["side"].eq(const.OPEN_LONG).any():
-            df_row['side'] = const.OPEN_LONG
+        if df_row["side"] == const.OPEN_LONG :
             df_row['lowest'] = df1.iloc[-(int(const.MAX_MIN_VALUE_WINDOW)):, df1.columns.get_loc('low')].min()
-            presetStopLossPrice = adjust_price(df_row['lowest'] - (df_row['lowest'] * const.STOP_LOST), priceEndStep, pricePlace)
-            
+            presetStopLossPrice = my_contract.adjust_price(float(df_row['lowest']) - (float(df_row['lowest']) * float(const.STOP_LOST)))
         # set the stop lost for OPEN_SHORT
-        elif df1["side"].eq(const.OPEN_SHORT).any():
-            df_row['side'] = const.OPEN_SHORT
+        elif df_row["side"] == const.OPEN_SHORT :
             df_row['highest'] = df1.iloc[-(int(const.MAX_MIN_VALUE_WINDOW)):, df1.columns.get_loc('high')].max()
-            presetStopLossPrice = adjust_price(df_row['highest'] + (df_row['highest'] * const.STOP_LOST), priceEndStep, pricePlace)
+            presetStopLossPrice = my_contract.adjust_price(float(df_row['highest']) + (float(df_row['highest']) * float(const.STOP_LOST)))
 
         df_row['presetStopLossPrice'] = presetStopLossPrice
 
         # set the take profit at the bbm value as a first take profit step 
-        df_row['presetStopSurplusPrice'] = adjust_price(df_row['bbm'], priceEndStep, pricePlace)
+        df_row['presetStopSurplusPrice'] = my_contract.adjust_price(df_row['bbm'])
 
         self.__set_row(df_row)
-
-        # get the 2% usdt amount available for the trade
-        usdt_avail = self.__mybit.get_my_account().get_usdt_per_trade(minTradeUSDT)
-        if usdt_avail is None:
-            return False
-        return self.__set_price_and_validate_ratio(usdt_avail, priceEndStep, pricePlace, volumePlace)
+               
+        return self.__set_price_and_validate_ratio(my_contract)
         
-    def __set_price_and_validate_ratio(self, 
-                                      usdt_avail: float, 
-                                      priceEndStep: float, 
-                                      pricePlace : int, 
-                                      volumePlace: int) -> bool:
+    def __set_price_and_validate_ratio(self, my_contract : MyContract) -> bool:
 
         df0 = self.get_row()
+               
+        # get the 2% usdt amount available for the trade
+        usdt_avail = self.__mybit.get_my_account().get_usdt_per_trade(my_contract.get_minTradeUSDT())
+        if usdt_avail is None:
+            logger.debug(" no more usdt_avail for trading")
+            return False
         
         # get the bids and asks list 
         bids_asks = self.__mybit.get_bids_and_asks(self.__symbol)
@@ -258,7 +241,7 @@ class ExtractTransform:
             # You must place your limit sell order above or equal to the best ask price.
             # the rule is to choice the SELL_POSITION_IN_ASKS (4th position or else) 
             ########################################################################################
-            df0['price']  = adjust_price(df1.iloc[const.PRICE_RANK_IN_BIDS_ASKS,0], priceEndStep, pricePlace)
+            df0['price']  = my_contract.adjust_price(df1.iloc[const.PRICE_RANK_IN_BIDS_ASKS,0])
             logger.info(f"{self.__symbol} : price for trade is : {df0['price']}")
 
         elif df0['side'] == const.OPEN_LONG:
@@ -268,12 +251,17 @@ class ExtractTransform:
             # You must place your limit buy order below or equal to the best bid price.
             # the rule is to choice the BUY_POSITION_IN_BIDS (4th position or else) 
             ########################################################################################
-            df0['price']  = adjust_price(df1.iloc[const.PRICE_RANK_IN_BIDS_ASKS,0], priceEndStep, pricePlace)
+            df0['price']  = my_contract.adjust_price(df1.iloc[const.PRICE_RANK_IN_BIDS_ASKS,0])
             logger.info(f"{self.__symbol} : price for trade is : {df0['price']}")
         else :
+            logger.error(f"{self.__symbol} : not a valid side : {df0['side']}")
             return False
         
-        df0['size'] = adjust_quantity(usdt_avail / df0['price'], volumePlace)    
+        df0['size'] = my_contract.adjust_quantity(usdt_avail / df0['price'])    
+        
+        if my_contract.is_not_under_min_trade_amount(df0['size'], df0['price']):
+            logger.info(f"{self.__symbol} : min 5 usdt for trade not reached {float(df0['size']) * float(df0['price'])}")
+            return False
 
         # the estimate profit is the difference between the bbm and the close price
         df0['estim_profit'] = abs(df0['bbm'] - df0['price'])

@@ -1,48 +1,55 @@
 import os
 import json
+import time
 import shutil
 import pandas as pd
-# import trade_bot.utils.enums as const
+import trade_bot.utils.enums as const
 from trade_bot.utils.trade_logger import logger
 from trade_bot.utils.enums import ORDER_COUNTER
-from decimal import Decimal, ROUND_DOWN
 
-def adjust_quantity(quantity: float, volume_place: int) -> float:
+def return_the_close_from(code) -> str:
+    if code == const.OPEN_LONG:
+        return const.CLOSE_LONG
+    elif code == const.OPEN_SHORT:
+        return const.CLOSE_SHORT
+    else:
+        return ''
 
-    if volume_place == 0 and quantity < 1:
-        return 1
-
-    quantity = Decimal(str(quantity))
-    return float(quantity.quantize(Decimal('1.' + '0' * volume_place), rounding=ROUND_DOWN))
-
-def adjust_price(price: float, price_end_step: float, price_place: int) -> float:
-    """
-    Adjusts the price to comply with Bitget's priceEndStep and pricePlace.
-    
-    :param price: The calculated price
-    :param price_end_step: The price step length
-    :param price_place: The number of decimal places for the price
-    :return: Adjusted price
-    """
-    price = Decimal(str(price))
-    price_end_step = Decimal(str(price_end_step)) / (10 ** price_place)
-    
-    # Round down to the nearest step
-    adjusted_price = (price // price_end_step) * price_end_step
-    
-    # Format to required decimal places
-    return float(adjusted_price.quantize(Decimal('1.' + '0' * price_place), rounding=ROUND_DOWN))
-
-def has_non_empty_column(df, column_list):
+def has_not_empty_column(df, column_list) -> bool:
     for column_name in column_list:
         is_present = column_name in df and not df[column_name].empty
         if not is_present:
             return False
     return True
+    
+def substract_one_unit(amount) -> str:
+    """
+    Adds one smallest decimal unit to the given float or string number.
+    Examples:
+        '0.0932' -> 0.0933
+        14 -> 15
+        0.49 -> 0.5
+    """
+    value_str = str(amount)
+    
+    if '.' in value_str:
+        decimals = len(value_str.split('.')[-1])
+        increment = 10 ** -decimals
+    else:
+        increment = 1
 
-    return column_name in df and not df[column_name].empty
+    return str(round(float(value_str) - increment, decimals if '.' in value_str else 0))
 
-def get_client_oid():
+def get_suffix_from_client_oid(client_oid):
+    """
+    Extracts and returns the suffix from the client_oid string.
+    For example, '123345_CR' -> 'CR'
+    """
+    if '_' in client_oid:
+        return client_oid.split('_')[-1]
+    return None
+
+def get_client_oid(suffix: str):
     if os.path.exists(ORDER_COUNTER):
         with open(ORDER_COUNTER, "r") as f:
             order_counter = int(f.read().strip())
@@ -54,7 +61,7 @@ def get_client_oid():
     with open(ORDER_COUNTER, "w") as f:
         f.write(str(order_counter))
 
-    return f"order_{order_counter}_lc"  # Example: order_101, order_102, etc.
+    return f"order_{order_counter}_{suffix}"  # Example: 101_create, 101_mod_tk, 101_trailing etc.
 
 def get_files_fifo(directory):
     """Retrieve files from a directory in FIFO order based on creation time."""

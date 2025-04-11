@@ -14,13 +14,13 @@ os.makedirs(SUCCESS_OPEN_TRADE_DIR, exist_ok=True)
 os.makedirs(FAILED_OPEN_TRADE_DIR, exist_ok=True)
 
 # to log order we do not use the logger library
-def log_open_order(msg: str, df_row: pd):
+def log_open_order(msg: str, key: str, df_row: pd):
     """
     Logs each order into a separate file in 'SUCCESS_OPEN_TRADE_DIR' or 'FAILED_OPEN_TRADE_DIR'.
     """
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     log_dir = SUCCESS_OPEN_TRADE_DIR if msg == "success" else FAILED_OPEN_TRADE_DIR
-    log_path = os.path.join(log_dir, f"order_{timestamp}.log")
+    log_path = os.path.join(log_dir, f"order_{key}_{timestamp}.log")
 
     # convert row to dict
     row = df_row.to_dict()
