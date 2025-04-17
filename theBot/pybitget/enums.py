@@ -44,6 +44,8 @@ MIX_ACCOUNT_V2_URL = '/api/v2/mix/account'
 MIX_ORDER_V2_URL = '/api/v2/mix/order'
 MIX_POSITION_V2_URL = '/api/v2/mix/position'
 
+
+
 MIX_MARKET_V1_URL = '/api/mix/v1/market'
 MIX_ACCOUNT_V1_URL = '/api/mix/v1/account'
 MIX_POSITION_V1_URL = '/api/mix/v1/position'

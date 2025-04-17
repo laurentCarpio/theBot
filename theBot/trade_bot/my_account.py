@@ -40,7 +40,7 @@ class MyAccount:
             usdt_avail = self.__available * float(PERCENTAGE_VALUE_PER_TRADE)
             # if not enough money to trade 
             if usdt_avail < minTradeUSDT:
-                logger.info(f'{usdt_avail} is under the usdt available is under the minTradeUSDT {minTradeUSDT}')
+                logger.debug(f'{usdt_avail} is under the usdt available is under the minTradeUSDT {minTradeUSDT}')
                 return 0.0
             else :
                  # for testing and debug trade = 8$ max

@@ -43,18 +43,17 @@ class ExtractTransform:
     def get_data(self) -> pd:
         return self.__df_data
 
-    def display_chart(self):
-        self.__myGraph.show_chart()
+    def display_chart(self, client_oid, display=True):
+        self.__myGraph.get_chart(client_oid, display)
 
     def find_candidat(self) -> bool:
         for index, freq in enumerate(const.MY_FREQUENCY_LIST):
-            logger.info('###########################################')
-            logger.info(f'{self.__symbol} : validation at frequency {freq}')
+            logger.debug(f'{self.__symbol} : validation at frequency {freq}')
             self.set_data(self.__mybit.get_candles(self.__symbol, freq))
-            if self.__prepare_data_for(freq_to_resample(freq)):
+            if self.__prepare_data_for(freq):
                 if self.__my_strategy.validate_rules(self.__df_data.iloc[const.STRATEGY_WINDOW:].copy()):
                     # the next good candidat replace the last one found
-                    logger.info(f'{self.__symbol} : good candidat at this {freq}')
+                    logger.debug(f'{self.__symbol} : good candidat at this {freq}')
                     self.__set_candidat(self.get_data(), freq)
                     self.__myGraph.set_candidat(self.get_data(), freq)
                     # for debug only 
@@ -69,12 +68,13 @@ class ExtractTransform:
         
         return False if self.__get_candidat().empty else True
                      
-    def __prepare_data_for(self, resample: str) -> bool:
+    def __prepare_data_for(self, freq: str) -> bool:
         df1 = self.get_data().copy()
         if len(df1.columns) < 7 or len(df1) < const.MIN_CANDLES_FOR_INDICATORS:
             logger.debug(f'{self.__symbol} : empty dataframe or not enough candles to validate the strategy')
             return False
         else :
+            resample = freq_to_resample(freq)
             df1 = df1.drop(['volume Currency'], axis= 1)
             df1['Date'] = pd.to_datetime(pd.to_numeric(df1['Date']), unit="ms")
             df1.set_index("Date", inplace=True)
@@ -83,6 +83,7 @@ class ExtractTransform:
             for col in df1.columns[:]:
                 df1[col] = pd.to_numeric(df1[col])
             df1['symbol'] = self.__symbol
+            df1['freq'] = freq
             return self.__calculate_indicators(df1)
             
     def __calculate_indicators(self, df1: pd) -> bool:
@@ -193,14 +194,12 @@ class ExtractTransform:
         # get the last row 
         df_row = df1.iloc[-1].copy()
 
-        # add the frequency where the strategy was validated 
-        df_row['freq'] = df1.index.freq.nanos
-
         df_row['highest'] = 0.0
         df_row['lowest'] = 0.0
         
-        my_contract = MyContract(self.__symbol, self.__mybit)
-        if my_contract is None:
+        my_contract = self.__mybit.get_contract(self.__symbol)
+        my_contract = MyContract(self.__symbol, self.__mybit.get_contract(self.__symbol))
+        if my_contract.is_not_valid_or_not_opened():
             return False
 
         # set the stop lost for OPEN_LONG
@@ -236,31 +235,25 @@ class ExtractTransform:
         
         if df0['side'] == const.OPEN_SHORT:
             df1 = pd.DataFrame(bids_asks.get('data')['asks'])
-            #######################################################################################
-            # we want to sell at the highest price possible
-            # You must place your limit sell order above or equal to the best ask price.
-            # the rule is to choice the SELL_POSITION_IN_ASKS (4th position or else) 
-            ########################################################################################
-            df0['price']  = my_contract.adjust_price(df1.iloc[const.PRICE_RANK_IN_BIDS_ASKS,0])
-            logger.info(f"{self.__symbol} : price for trade is : {df0['price']}")
-
         elif df0['side'] == const.OPEN_LONG:
             df1 = pd.DataFrame(bids_asks.get('data')['bids'])
-            #######################################################################################
-            # we want to buy at the lowest price possible
-            # You must place your limit buy order below or equal to the best bid price.
-            # the rule is to choice the BUY_POSITION_IN_BIDS (4th position or else) 
-            ########################################################################################
-            df0['price']  = my_contract.adjust_price(df1.iloc[const.PRICE_RANK_IN_BIDS_ASKS,0])
-            logger.info(f"{self.__symbol} : price for trade is : {df0['price']}")
         else :
             logger.error(f"{self.__symbol} : not a valid side : {df0['side']}")
             return False
         
+        #######################################################################################
+        # we want to sell at the highest price possible or buy at the lowest price possible
+        #  - we must place your limit sell order above or equal to the best ask price
+        #  - we must place your limit buy order below or equal to the best bid price.
+        # the rule is to choice the PRICE_RANK_IN_BIDS_ASKS position
+        ########################################################################################
+        df0['price']  = my_contract.adjust_price(df1.iloc[const.PRICE_RANK_IN_BIDS_ASKS,0])
+        logger.debug(f"{self.__symbol} : price for trade is : {df0['price']}")
+        
         df0['size'] = my_contract.adjust_quantity(usdt_avail / df0['price'])    
         
         if my_contract.is_not_under_min_trade_amount(df0['size'], df0['price']):
-            logger.info(f"{self.__symbol} : min 5 usdt for trade not reached {float(df0['size']) * float(df0['price'])}")
+            logger.debug(f"{self.__symbol} : min 5 usdt for trade not reached {float(df0['size']) * float(df0['price'])}")
             return False
 
         # the estimate profit is the difference between the bbm and the close price
@@ -274,18 +267,16 @@ class ExtractTransform:
             df0['ratio'] = df0['estim_profit']  / (df0['presetStopLossPrice'] - df0['price'])
 
         if df0['ratio'] > const.ACCEPTABLE_RATIO:
-            logger.info(f"{self.__symbol} :ratio {df0['ratio']} ok for trade")
-            df0['productType'] = const.PRODUCT_TYPE_USED
-            df0['marginMode'] = const.MARGIN_MODE
-            df0['marginCoin'] = const.MARGIN_COIN_USED
-            df0['orderType'] = const.ORDER_TYPE_LIMIT
-            df0['force'] = const.TIME_IN_FORCE_TYPES[1]
-            df0['reduceOnly'] = const.REDUCE_ONLY_NO
-            logger.info('XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX')
+            logger.debug(f"{self.__symbol} :ratio {df0['ratio']} ok for trade")
+            logger.debug('XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX')
+            df0['price_end_step'] = my_contract.get_price_end_step()
+            df0['minTradeUSDT'] = my_contract.get_minTradeUSDT()
+            df0['price_place'] = my_contract.get_price_place()
+            df0['volume_place'] = my_contract.get_volume_place()
             self.__set_row(df0)
             return True
         else:
-            logger.info(f"{self.__symbol} :ratio {df0['ratio']} failed for trade")
-            logger.info('XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX')
+            logger.debug(f"{self.__symbol} :ratio {df0['ratio']} failed for trade")
+            logger.debug('XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX')
             self.__set_row(pd.DataFrame())
             return False

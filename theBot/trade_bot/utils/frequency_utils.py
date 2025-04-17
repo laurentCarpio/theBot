@@ -27,20 +27,3 @@ def resample_to_freq(frequency: str) -> str:
         return frequency.replace("min", "m").lower()
     else:
         return frequency
-
-def get_above_frequency(frequency: str) -> str:
-    my_list = const.MY_FREQUENCY_LIST
-    try:
-        last_index = my_list.index(const.FREQUENCY_4H)
-        index = my_list.index(frequency)
-        # Get the next item
-        if index < last_index: 
-            return my_list[index + 1]
-        else: # to the last frequency available for validation
-            return const.FREQUENCY_12H
-    except ValueError:
-        # # should never happens 
-        return frequency
-
-def get_frequency_for_next_step(frequency: str) -> str:
-    return const.FREQUENCY_MAPPING[frequency]

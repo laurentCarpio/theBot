@@ -1,57 +1,74 @@
 import time
 import pandas as pd
+from trade_bot.utils.enums import CONTRACT_OPEN_TIME_INDEF
 from decimal import Decimal, ROUND_DOWN
-from trade_bot.my_bitget import MyBitget
-from trade_bot.utils.tools import has_not_empty_column
+from trade_bot.utils.tools import has_not_empty_column, safe_int
 from trade_bot.utils.trade_logger import logger
 
 class MyContract:
     __symbol = None
-    __df_contract = None
     __price_place = None
     __price_end_step = None
     __minTradeUSDT = None
     __volume_place = None
+    __is_not_valid_or_not_opened = True
 
-    def __init__(self, symbol: str, mybit: MyBitget):
+
+    def __init__(self, symbol: str, df0: pd=None):
         self.__symbol = symbol
-        # get future contract details (minTradeUSDT, priceEndStep, volumePlace, pricePlace, limitOpenTime)
-        df0 = mybit.get_contract(self.__symbol)
-        if self.__is_contract_valide(df0):
-            self.__df_contract = df0
-            self.__price_end_step = float(df0['priceEndStep'].iloc[-1])
-            self.__minTradeUSDT = float(df0['minTradeUSDT'].iloc[-1])
-            self.__price_place = int(df0['pricePlace'].iloc[-1])
-            self.__volume_place = int(df0['volumePlace'].iloc[-1])
+        if self.__is_contract_exist(df0):
+            limitOpenTime = int(df0['limitOpenTime'].iloc[-1])
+            openTime = safe_int(df0['openTime'].iloc[-1], CONTRACT_OPEN_TIME_INDEF)
+            if self.__is_contract_open(limitOpenTime, openTime):
+                self.__price_end_step = float(df0['priceEndStep'].iloc[-1])
+                self.__minTradeUSDT = float(df0['minTradeUSDT'].iloc[-1])
+                self.__price_place = int(df0['pricePlace'].iloc[-1])
+                self.__volume_place = int(df0['volumePlace'].iloc[-1])
+                self.__is_not_valid_or_not_opened = False
         else :
-            self.__df_contract = None
+            pass
+
+    def assign_contract_value(self, price_end_step, minTradeUSDT, price_place, volume_place, is_not_valid_or_not_opened):
+        self.__price_end_step = price_end_step
+        self.__minTradeUSDT = minTradeUSDT
+        self.__price_place = price_place
+        self.__volume_place = volume_place      
+        self.__is_not_valid_or_not_opened = is_not_valid_or_not_opened
+
+    def get_price_end_step(self):
+        return self.__price_end_step
 
     def get_minTradeUSDT(self):
         return self.__minTradeUSDT
 
-    def __is_contract_valide(self, df0: pd) -> bool:
+    def get_price_place(self):
+        return self.__price_place
+
+    def get_volume_place(self):
+        return self.__volume_place
+    
+    def is_not_valid_or_not_opened(self):
+        return self.__is_not_valid_or_not_opened
+    
+    def get_minTradeUSDT(self):
+        return self.__minTradeUSDT
+
+    def __is_contract_exist(self, df0: pd) -> bool:
         if df0 is not None and has_not_empty_column(df0, ['limitOpenTime','minTradeUSDT','priceEndStep','volumePlace','pricePlace','openTime']):
-            # validate that the limit open time = '-1' 
-            # -1 means normal; other values indicate that the symbol is under maintenance or 
-            # to be maintained and trading is prohibited after the specified time.
-            if df0['limitOpenTime'].iloc[-1] != '-1':
-                logger.info(f"{self.__symbol} : failed because limitOpenTime is = -1")
-                return False
-            if self.__is_contract_not_open(df0['openTime'].iloc[-1]):
-                logger.info(f"{self.__symbol} : failed because openTime is in future")
-                return False
-            # the contract is valid to do trading
             return True
         else:
+            logger.debug(f"{self.__symbol} : failed because contract have missing column(s)")
             return False
 
-    def __is_contract_not_open(self, open_time_ms: int) -> bool:
-        """
-        Returns True if the contract is not open yet (i.e., openTime is in the future).
-        """
-        open_time_ms = int(open_time_ms)  # Ensure it's an integer
-        current_time_ms = int(time.time() * 1000)
-        return open_time_ms != -1 and open_time_ms > current_time_ms
+    def __is_contract_open(self, limitOpenTime, openTime) -> bool:
+        if limitOpenTime != -1:
+            logger.debug(f"{self.__symbol} : failed because limitOpenTime != -1")
+            return False
+        elif openTime == CONTRACT_OPEN_TIME_INDEF:
+            return True
+        else :        
+            current_time_ms = int(time.time() * 1000)
+            return openTime <= current_time_ms
         
     def adjust_price(self, price: float) -> float:
         """

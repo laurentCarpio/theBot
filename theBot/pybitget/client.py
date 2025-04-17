@@ -1,5 +1,6 @@
 import requests
 import json
+import trade_bot.utils.enums as const
 from pybitget.enums import *
 from pybitget import utils
 from pybitget import exceptions
@@ -75,52 +76,48 @@ class Client(object):
             return ""
 
     """ --- the used Api for the bot ---"""
-    def mix_get_all_tickers(self, productType):
+    def mix_get_all_tickers(self):
         params = {}
-        if productType:
-            params["productType"] = productType
-            return self._request_with_params(GET, MIX_MARKET_V2_URL + '/tickers', params)
-        else:
-            logger.error("pls check args")
-            return False
+        params["productType"] = const.PRODUCT_TYPE_USED
+        return self._request_with_params(GET, MIX_MARKET_V2_URL + '/tickers', params)
 
-    def mix_get_candles(self, symbol, 
-                        productType, 
-                        granularity, 
-                        startTime, 
-                        endTime, 
-                        kLineType, 
-                        limit):
+    def mix_get_all_positions(self):
         params = {}
-        if symbol and productType and granularity and startTime and endTime :
+        params["productType"] = const.PRODUCT_TYPE_USED
+        params["marginCoin"] = const.MARGIN_COIN_USED
+        return self._request_with_params(GET, MIX_POSITION_V2_URL + '/all-position', params)
+            
+    def mix_get_candles(self, symbol, granularity, startTime, endTime):
+        params = {}
+        if symbol  and granularity and startTime and endTime :
             params["symbol"] = symbol
-            ### j'ai ajouté le productType pour la V2 
-            params["productType"] = productType
+            params["productType"] = const.PRODUCT_TYPE_USED
             params["granularity"] = granularity
             params["startTime"] = startTime
             params["endTime"] = endTime
-            params["kLineType"] = kLineType
-            params["limit"] = limit
+            params["kLineType"] = const.KLINE_TYPE
+            params["limit"] = const.MIN_CANDLES_FOR_INDICATORS
+
             return self._request_with_params(GET, MIX_MARKET_V2_URL + '/candles', params)
         else:
             logger.error("pls check args")
             return False
     
-    def mix_get_contract_config(self, productType, symbol):
+    def mix_get_contract_config(self, symbol):
         params = {}
-        if productType and symbol:
-            params["productType"] = productType
+        if symbol:
+            params["productType"] = const.PRODUCT_TYPE_USED
             params["symbol"] = symbol
             return self._request_with_params(GET, MIX_MARKET_V2_URL + '/contracts', params)
         else:
             logger.error("pls check args")
             return False
             
-    def mix_get_merge_depth(self, symbol, productType, precision, limit):
+    def mix_get_merge_depth(self, symbol, precision='scale0', limit='max'):
         params = {}
-        if symbol and productType and precision and limit:
+        if symbol :
             params["symbol"] = symbol
-            params["productType"] = productType
+            params["productType"] = const.PRODUCT_TYPE_USED
             params["precision"] = precision
             params["limit"] = limit
             return self._request_with_params(GET, MIX_MARKET_V2_URL + '/merge-depth', params)
@@ -128,75 +125,98 @@ class Client(object):
             logger.error("pls check args")
             return False
 
-    def mix_set_position_mode(self, productType, posMode):
+    def mix_set_leverage(self, symbol):
         params = {}
-        if productType and posMode:
-            params["productType"] = productType
-            params["posMode"] = posMode
-            return self._request_with_params(POST, MIX_ACCOUNT_V2_URL + '/set-position-mode', params)
-        else:
-            logger.error("pls check args")
-            return False
-                
-    def mix_root_place_order(self, symbol, productType, marginMode, marginCoin, size, price, side, 
-                        orderType, force, clientOid, reduceOnly):
-        params = {}
-        params["symbol"] = symbol
-        params["productType"] = productType
-        params["marginMode"] = marginMode
-        params["marginCoin"] = marginCoin
-        params["size"] = size
-        params["price"] = price
-        params["side"] = side
-        # params["tradeSide"] = tradeSide   no trade side for one-way-mode position mode 
-        params["orderType"] = orderType
-        params["force"] = force
-        params["clientOid"] = clientOid
-        params["reduceOnly"] = reduceOnly
-        return self._request_with_params(POST, MIX_ORDER_V2_URL + '/place-order', params)
-
-    def mix_set_leverage(self, symbol, productType, marginCoin, leverage):
-        params = {}
-        if symbol and productType and marginCoin and leverage:
+        if symbol :
             params["symbol"] = symbol
-            params["productType"] = productType
-            params["marginCoin"] = marginCoin
-            params["leverage"] = leverage
+            params["productType"] = const.PRODUCT_TYPE_USED
+            params["marginCoin"] = const.MARGIN_COIN_USED
+            params["leverage"] = const.DEFAULT_LEVERAGE
             return self._request_with_params(POST, MIX_ACCOUNT_V2_URL + '/set-leverage', params)
         else:
             logger.error("pls check args")
             return False
-                     
-    def mix_tp_or_sl_plan_order(self, planType, symbol, 
-                             productType,
-                             marginMode, marginCoin,
-                             size, 
-                             triggerPrice, triggerType, side,
-                             orderType, clientOID):
+        
+    def mix_set_position_mode(self):
         params = {}
-        if planType and symbol and productType and marginMode and marginCoin and size and \
-            triggerPrice and triggerType and side and orderType and clientOID :
-            params["planType"] = planType
+        params["productType"] = const.PRODUCT_TYPE_USED
+        params["posMode"] = const.ONE_WAY_MODE_POSITION
+        
+        return self._request_with_params(POST, MIX_ACCOUNT_V2_URL + '/set-position-mode', params)
+                        
+    def mix_root_place_order(self, symbol, size, price, side, clientOID):
+        params = {}
+        if symbol and size and price and side and clientOID:
             params["symbol"] = symbol
-            params["productType"] = productType
-            params["marginMode"] = marginMode
-            params["marginCoin"] = marginCoin
+            params["productType"] = const.PRODUCT_TYPE_USED
+            params["marginMode"] = const.MARGIN_MODE
+            params["marginCoin"] = const.MARGIN_COIN_USED
             params["size"] = size
-            params["triggerPrice"] = triggerPrice
-            params["triggerType"] = triggerType
+            params["price"] = price
             params["side"] = side
-            params["orderType"] = orderType
+            params["orderType"] = const.ORDER_TYPE_LIMIT
+            params["force"] = const.TIME_IN_FORCE_TYPES[1]
             params["clientOID"] = clientOID
-            
-            logger.info(f"planType {planType}, symbol {symbol}, productType {productType},marginMode {marginMode}, \
-                             marginCoin {marginCoin},size {size},triggerPrice {triggerPrice}, triggerType {triggerType}, \
-                            side {side}, orderType {orderType}, clientOID {clientOID} ")
+            params["reduceOnly"] = const.REDUCE_ONLY_NO
+            return self._request_with_params(POST, MIX_ORDER_V2_URL + '/place-order', params)
+        else:
+            logger.error("pls check args")
+            return False
+                     
+    def mix_tpsl_plan_order(self, symbol, planType,
+                            triggerPrice, executePrice,
+                            holdSide, size, clientOID):
+
+        params = {}
+        if symbol and planType and triggerPrice  and executePrice and holdSide and size and clientOID :
+            params["marginCoin"] = const.MARGIN_COIN_USED
+            params["productType"] = const.PRODUCT_TYPE_USED
+            params["symbol"] = symbol
+            params["planType"] = planType
+            params["triggerPrice"] = triggerPrice
+            params["triggerType"] = const.TRIGGER_TYPES[1]
+            params["executePrice"] = executePrice            
+            params["holdSide"] = holdSide
+            params["size"] = size
+            params["clientOID"] = clientOID
+        
+            return self._request_with_params(POST, MIX_ORDER_V2_URL + '/place-tpsl-order', params)
+        else:
+            logger.error("pls check args")
+            return False
+         
+    def mix_trail_plan_order(self, symbol, size, triggerPrice, side):
+        params = {}
+        if symbol and size and triggerPrice and side :
+            params["symbol"] = symbol
+            params["planType"] = const.TRAILING_PLAN_TYPE
+            params["productType"] = const.PRODUCT_TYPE_USED
+            params["marginMode"] = const.MARGIN_MODE
+            params["marginCoin"] = const.MARGIN_COIN_USED
+            params["size"] = size
+            params["callbackRatio"] = const.CALL_BACK_RATIO
+            params["triggerPrice"] = triggerPrice
+            params["triggerType"] = const.TRIGGER_TYPES[1]
+            params["side"] = side
+            params["orderType"] = const.ORDER_TYPE_LIMIT  
 
             return self._request_with_params(POST, MIX_ORDER_V2_URL + '/place-plan-order', params)
         else:
             logger.error("pls check args")
             return False
-         
+        
+    def mix_cancel_plan_order(self, symbol, planType): 
+        params = {}
+        if symbol and planType :
+            params["symbol"] = symbol
+            params["marginCoin"] = const.MARGIN_COIN_USED
+            params["productType"] = const.PRODUCT_TYPE_USED
+            params["planType"] = planType
+            return self._request_with_params(POST, MIX_ORDER_V2_URL + '/cancel-plan-order', params)
+        else:
+            logger.error("pls check args")
+            return False 
+
 #######################################################################
 ########     not used api for now 
 #######################################################################
@@ -245,31 +265,7 @@ class Client(object):
         else:
             logger.error("pls check args")
             return False
-        
-    def mix_cancel_plan_order(self, symbol, marginCoin, orderId, productType, planType): 
-        params = {}
-        if symbol and marginCoin and orderId and productType and planType:
-            params["symbol"] = symbol
-            params["marginCoin"] = marginCoin
-            params["productType"] = productType
-            params["orderId"] = orderId
-            params["planType"] = planType
-            return self._request_with_params(POST, MIX_ORDER_V2_URL + '/cancel-plan-order', params)
-        else:
-            logger.error("pls check args")
-            return False 
                 
-    def mix_get_all_positions(self, productType, marginCoin=None):
-        params = {}
-        if productType:
-            params["productType"] = productType
-            if marginCoin is not None:
-                params["marginCoin"] = marginCoin
-            return self._request_with_params(GET, MIX_POSITION_V2_URL + '/all-position', params)
-        else:
-            logger.error("pls check args")
-            return False
-
     def mix_get_order_detail(self, symbol, productType, clientOid):
         params = {}
         if symbol and productType and clientOid :
@@ -480,29 +476,8 @@ class Client(object):
         else:
             logger.error("pls check args")
             return False
-        
 
-    """ --- the place_order used until now with sl and tp ----- """
 
-    def mix_place_order(self, symbol, productType, marginMode, marginCoin, size, price, side, 
-                        orderType, force, clientOid, reduceOnly, presetStopSurplusPrice, presetStopLossPrice):
-        params = {}
-        params["symbol"] = symbol
-        params["productType"] = productType
-        params["marginMode"] = marginMode
-        params["marginCoin"] = marginCoin
-        params["size"] = size
-        params["price"] = price
-        params["side"] = side
-        # params["tradeSide"] = tradeSide   no trade side for one-way-mode position mode 
-        params["orderType"] = orderType
-        params["force"] = force
-        params["clientOid"] = clientOid
-        params["reduceOnly"] = reduceOnly
-        params["presetStopSurplusPrice"] = presetStopSurplusPrice
-        params["presetStopLossPrice"] = presetStopLossPrice
-        return self._request_with_params(POST, MIX_ORDER_V2_URL + '/place-order', params)
-    
     """ --- MIX-AccountApi """
 
     def mix_get_account(self, symbol, productType, marginCoin):

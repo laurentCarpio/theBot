@@ -3,8 +3,9 @@ import time
 import json
 import trade_bot.utils.enums as const
 from trade_bot.my_account import MyAccount
-from trade_bot.utils.trade_logger import logger, log_open_order
-from trade_bot.utils.tools import get_client_oid, substract_one_unit, return_the_close_from
+from trade_bot.my_contract import MyContract
+from trade_bot.utils.trade_logger import logger, log_trade_order
+import trade_bot.utils.tools as my_tool 
 from trade_bot.utils.frequency_utils import getFreq_in_ms
 from pybitget.stream import BitgetWsClient, build_subscribe_req, handel_error
 from pybitget.exceptions import BitgetAPIException
@@ -41,7 +42,7 @@ class MyBitget:
                                    "orders": self.on_orders_message
                                    }
         channels = ([build_subscribe_req("USDT-FUTURES", "account", "coin", "default"),
-                     #build_subscribe_req("USDT-FUTURES", "orders", "instId", "default"),
+                     build_subscribe_req("USDT-FUTURES", "orders", "instId", "default"),
                      build_subscribe_req("USDT-FUTURES", "orders-algo", "instId", "default")])
 
         self.__client_ws.subscribe(channels, self._on_message)
@@ -68,22 +69,33 @@ class MyBitget:
         self.__my_account.update(data)
         logger.debug(f"Account message: {data}")
 
-    def on_orders_algo_message(self, data):
-        logger.info(f"order trigger channel received : {data}")
-        plan = data.get('data')[0]
-        logger.info(f"order trigger channel data[0] received : {plan}")
-        #if plan['planType'] == 'tp':
-        #    logger.info(f" the tp_plan:  {plan['planType']}")
-        #    if const.ORDER_STATUS_LIVE == plan['status']:
-        #        # self.__update_profit_plan_size_from_trigger(plan)
-        #else:
-        #    logger.info("we pass over the __update_profit_plan_size_from_trigger")
-
     def on_orders_message(self, data):
         message_data = data.get('data')[0]
-        logger.info(f" the data from the order publisher {message_data}")
-        logger.info(f"Orders message: {data}")
-    
+        logger.info(f"order channel received {message_data}")
+        client_oid = message_data.get('clientOid')
+        if client_oid is not None:
+            if my_tool.is_place_order(message_data['clientOid']) :
+                if message_data['status'] == const.PLACE_ORDER_PARTIALLY_FILLED or message_data['status'] == const.PLACE_ORDER_FILLED:
+                    trade_dict = my_tool.read_order_file(client_oid)
+                    my_contract = MyContract(message_data.get('instId'))
+                    my_contract.assign_contract_value(trade_dict['contract_price_end_step'],
+                                                      trade_dict['contract_minTradeUSDT'],
+                                                      trade_dict['contract_price_place'],
+                                                      trade_dict['contract_volume_place'],
+                                                      False)
+
+                    self.sl_place_order(message_data, trade_dict['place_order_preset_SL'], my_contract)
+                    self.tp_place_order(message_data, trade_dict['place_order_preset_TP'], my_contract)
+
+    def on_orders_algo_message(self, data):
+        logger.info(f"trigger channel received : {data}")
+        message_data = data.get('data')[0]
+        client_oid = message_data.get('clientOid')
+        if client_oid is not None:
+            if message_data['planType'] == 'tp' and const.TRIGGER_ORDER_STATUS_EXECUTED == message_data['status']:
+                self.cancel_trigger_sl_order(message_data)
+                self.trail_place_order(message_data)
+
     def get_my_account(self):
         return self.__my_account
     
@@ -91,19 +103,19 @@ class MyBitget:
         return self.__client_api
     
     def get_all_symbol(self) -> pd:
-        return self.__all_symbols['symbol']
+        df = self.remove_symbol_with_opened_position(self.__all_symbols)
+        shuffled_df = df.sample(frac=1).reset_index(drop=True)
+        logger.info('getting all tickers from bitget without opened positions')
+        return shuffled_df['symbol']
     
     def __set_all_to_one_way_position_mode(self):
-            pos_mode = self.__client_api.mix_set_position_mode(const.PRODUCT_TYPE_USED,const.ONE_WAY_MODE_POSITION)
+            pos_mode = self.__client_api.mix_set_position_mode()
             logger.debug(f" {pos_mode.get('msg')} to set all pairs at one way mode")
     
     def __set_leverage_for_all_pairs(self):        
         for symbol in self.get_all_symbol():
             try:
-                response_leverage = self.__client_api.mix_set_leverage(symbol,
-                                                              const.PRODUCT_TYPE_USED,
-                                                               const.MARGIN_COIN_USED,
-                                                                const.DEFAULT_LEVERAGE)
+                response_leverage = self.__client_api.mix_set_leverage(symbol)
                 logger.debug(f"{symbol} - set Leverage msg : {response_leverage.get('msg')}")
                 time.sleep(1)  # Add delay to avoid API rate limits 
             except BitgetAPIException as e:
@@ -112,16 +124,15 @@ class MyBitget:
     def getAllTickers(self, do_call=True, do_save=False, do_one=False) -> pd:
         try:
             if do_call:
-                tickers = self.__client_api.mix_get_all_tickers(const.PRODUCT_TYPE_USED)
+                tickers = self.__client_api.mix_get_all_tickers()
                 df = pd.DataFrame(tickers.get('data'))
-                shuffled_df = df.sample(frac=1).reset_index(drop=True)
                 logger.debug('getting all tickers from bitget')
                 if do_save:
                     df.to_csv(f'{const.DATA_DIR}/all_tickers.csv', index=True)
-                return shuffled_df
+                return df
             else:
                 if do_one:
-                    return pd.DataFrame(pd.Series(['COSUSDT'], name='symbol'))
+                    return pd.DataFrame(pd.Series(['MEUSDT'], name='symbol'))
                 else:
                     df = pd.read_csv(f'{const.DATA_DIR}/all_tickers.csv', index_col=0)
                     logger.debug('getting tickers from the debug directory')
@@ -132,16 +143,23 @@ class MyBitget:
             logger.error(f'{e.args} to read or write files') 
             return None
 
+    def remove_symbol_with_opened_position(self, df1 : pd) -> pd:
+        try:
+            positions = self.__client_api.mix_get_all_positions()
+            df2 = pd.DataFrame(positions.get('data'))
+            # Remove rows from df1 where 'symbol' is in df2['symbol']
+            return df1[~df1['symbol'].isin(df2['symbol'])]
+        except BitgetAPIException as e:
+            logger.error(f'{e.code}: {e.message} to get all positions')
+            return None
+
     def get_candles(self, symbol: str, granularity: str, do_call=True, do_save=False) -> pd:
         try:
             if do_call:
                 # Get the current timestamp in milliseconds
                 endTime = int(time.time() * 1000)
                 startTime = endTime - const.MIN_CANDLES_FOR_INDICATORS * getFreq_in_ms(granularity)
-                _candles = self.__client_api.mix_get_candles(symbol, const.PRODUCT_TYPE_USED, granularity,
-                                                       startTime, endTime,
-                                                       const.KLINE_TYPE, 
-                                                       const.MIN_CANDLES_FOR_INDICATORS)
+                _candles = self.__client_api.mix_get_candles(symbol, granularity, startTime, endTime)
                 columns = ['Date', 'open', 'high', 'low', 'close',
                            'volume', 'volume Currency']
                 df = pd.DataFrame(_candles.get('data'), columns=columns)
@@ -165,84 +183,130 @@ class MyBitget:
     
     def get_contract(self, symbol) -> pd:
         try:
-            contract = self.__client_api.mix_get_contract_config(const.PRODUCT_TYPE_USED, symbol)
+            contract = self.__client_api.mix_get_contract_config(symbol)
             return pd.DataFrame(contract.get('data'))
         except BitgetAPIException as e:
             logger.error(f'{e.code}: {e.message} to get contract')
             return None
         
-    def get_bids_and_asks(self, symbol: str, precision='scale0', limit='max') -> pd:
+    def get_bids_and_asks(self, symbol: str) -> pd:
         try:
-            bids_asks = self.__client_api.mix_get_merge_depth(symbol,const.PRODUCT_TYPE_USED, precision, limit)
+            bids_asks = self.__client_api.mix_get_merge_depth(symbol)
             logger.debug(f"get bids and asks msg: {bids_asks.get('msg')}")
             return bids_asks
         except BitgetAPIException as e: 
             logger.error(f'getting BitgetAPIException {e} to get_bids_asks')
       
-    def place_order(self, df_row: pd):
+    def place_order(self, df_row: pd) -> str:
         try: 
-            df_row['clientOid'] = get_client_oid(const.CLIENT_0ID_ORDER)
-            log_open_order("before the call",'ORDER', df_row)
+            clientOID = my_tool.get_new_client_oid(const.CLIENT_0ID_ORDER)
             order = self.__client_api.mix_root_place_order(symbol= df_row['symbol'],
-                                                     productType= df_row['productType'],
-                                                     marginMode= df_row['marginMode'],
-                                                     marginCoin= df_row['marginCoin'],
                                                      size= df_row['size'],
                                                      price=df_row['price'],
                                                      side= df_row['side'],
-                                                     orderType= df_row['orderType'],
-                                                     force = df_row['force'],
-                                                     clientOid= df_row['clientOid'],
-                                                     reduceOnly= df_row['reduceOnly'])   
+                                                     clientOID= clientOID)   
             
-            df_row['orderId_create'] = order.get('data').get('orderId')
-            df_row['request_time'] = order.get('requestTime')
-            log_open_order(order.get('msg'),'ORDER', df_row)
+            logger.info(f"place new order :{order.get('msg')} with clientOID = {clientOID}")
+            new_log = const.LOG_DICT
+            log_trade_order(new_log, symbol= df_row['symbol'],
+                                 frequence= df_row['freq'],
+                                 place_order_clientOID= clientOID,
+                                 place_order_orderID= order.get('data').get('orderId'),
+                                 place_order_msg= order.get('msg'),
+                                 place_order_size= df_row['size'],
+                                 place_order_price= df_row['price'],
+                                 place_order_side= df_row['side'],
+                                 place_order_preset_SL= df_row['presetStopLossPrice'],
+                                 place_order_preset_TP= df_row['presetStopSurplusPrice'],
+                                 contract_price_end_step= df_row['price_end_step'],
+                                 contract_minTradeUSDT= df_row['minTradeUSDT'],
+                                 contract_price_place= df_row['price_place'],
+                                 contract_volume_place= df_row['volume_place']
+                                 )
+            return clientOID
         except BitgetAPIException as e:
             logger.error(f'{e.code}: {e.message} to place order')
             return None
-        
-        # put a sleep to get a chance of the order to be executed before opening tp and sl 
-        time.sleep(60)
-
-        try:    
-            if order.get('msg') == 'success':
-                sl_clientOid = get_client_oid(const.CLIENT_0ID_STOP_LOSS)
-                sl = self.__client_api.mix_tp_or_sl_plan_order(const.STOP_LOSS_PLAN_TYPE, 
-                                                            df_row['symbol'], 
-                                                            productType= df_row['productType'],
-                                                            marginMode= df_row['marginMode'],
-                                                            marginCoin= df_row['marginCoin'],
-                                                            size= df_row['size'], 
-                                                            triggerPrice = df_row['presetStopLossPrice'],
-                                                            triggerType = const.TRIGGER_TYPES[1],
-                                                            side = return_the_close_from(df_row['side']),
-                                                            orderType= df_row['orderType'],
-                                                            clientOID = sl_clientOid) 
+            
+    def sl_place_order(self, message_data: dict, sl_place_order_preset :str, my_contract : MyContract):
+        try:
+             sl_client_oid = my_tool.get_clientOID_for(clientOID=message_data.get('clientOid'), the_suffix=const.CLIENT_0ID_STOP_LOSS)
+             symbol = message_data.get('instId')
+             #baseVolume give the size of the last filled position, this is what we have to use to open tp and sl 
+             baseVolume = my_contract.adjust_quantity(float(message_data.get('baseVolume')))
+             side = message_data.get('side')
+             executePrice = my_contract.adjust_price(float(my_tool.move_one_unit(sl_place_order_preset, side)))
                 
-                logger.info(f"stop loss order status :{sl.get('msg')} with clientOid = {sl_clientOid} and orderId = {sl.get('data').get('orderId')}")
-                df_row['orderId_sl'] = sl.get('data').get('orderId')
-                log_open_order(sl.get('msg'),'SL', df_row)
-
-                tp_clientOid = get_client_oid(const.CLIENT_0ID_TAKE_PROFIT)
-                tp = self.__client_api.mix_tp_or_sl_plan_order(const.TAKE_PROFIT_PLAN_TYPE, 
-                                                            df_row['symbol'], 
-                                                            productType= df_row['productType'],
-                                                            marginMode= df_row['marginMode'],
-                                                            marginCoin= df_row['marginCoin'],
-                                                            size= str(float(df_row['size'])/2), 
-                                                            triggerPrice = df_row['presetStopSurplusPrice'],
-                                                            triggerType = const.TRIGGER_TYPES[1],
-                                                            side = return_the_close_from(df_row['side']),
-                                                            orderType= df_row['orderType'],
-                                                            clientOID = tp_clientOid)                                                             
-
-                logger.info(f"stop loss order status :{tp.get('msg')} with clientOid = {tp_clientOid} and orderId = {tp.get('data').get('orderId')}")
-                df_row['orderId_tp'] = tp.get('data').get('orderId')
-                log_open_order(tp.get('msg'),'TP', df_row)
+             sl = self.__client_api.mix_tpsl_plan_order(symbol= symbol,
+                                                        planType=const.STOP_LOSS_PLAN_TYPE,
+                                                        triggerPrice=sl_place_order_preset,
+                                                        executePrice=executePrice,
+                                                        holdSide=side,
+                                                        size=baseVolume,
+                                                        clientOID= sl_client_oid) 
+                
+             logger.info(f"stop loss order status :{sl.get('msg')} with clientOID = {sl_client_oid}")
 
         except BitgetAPIException as e:
             logger.error(f'{e.code}: {e.message} to place order tp and sl')
             return None
 
-                
+    def tp_place_order(self, message_data: dict, tp_place_order_preset :str, my_contract : MyContract):
+        try:
+             tp_client_oid = my_tool.get_clientOID_for(clientOID=message_data.get('clientOid'), the_suffix=const.CLIENT_0ID_TAKE_PROFIT)
+             symbol = message_data.get('instId')
+             #baseVolume give the size of the last filled position, this is what we have to use to open tp and sl 
+             baseVolume = my_contract.adjust_quantity(float(message_data.get('baseVolume'))/2)
+             side = message_data.get('side')
+             executePrice = my_contract.adjust_price(float(my_tool.move_one_unit(tp_place_order_preset, side)))
+             
+             tp = self.__client_api.mix_tpsl_plan_order(symbol=symbol,
+                                                        planType=const.TAKE_PROFIT_PLAN_TYPE,
+                                                        triggerPrice= tp_place_order_preset,                                                         
+                                                        executePrice= executePrice,
+                                                        holdSide= side,
+                                                        size= baseVolume,
+                                                        clientOID= tp_client_oid)                                                  
+
+             logger.info(f"take profit order status :{tp.get('msg')} with clientOID = {tp_client_oid}")
+
+        except BitgetAPIException as e:
+            logger.error(f'{e.code}: {e.message} to place order tp and sl order')
+            return None
+
+    def trail_place_order(self, message_data: dict):
+        try:
+            symbol = message_data.get('instId')
+            size = message_data.get('size')
+            triggerPrice = message_data.get('executePrice')
+            side = message_data.get('side')
+
+            trail = self.__client_api.mix_trail_plan_order(symbol=symbol,
+                                                           size=size,
+                                                           triggerPrice=triggerPrice,
+                                                           side=side)
+            
+            logger.info(f"trailing order status :{trail.get('msg')} for coin = {symbol}")
+
+        except BitgetAPIException as e:
+            logger.error(f'{e.code}: {e.message} to place order tp and sl order')
+            return None
+
+    def cancel_trigger_sl_order(self, message_data: dict):
+        """
+        Interface for cancelling trigger orders, can be used to cancel by 'productType', 'symbol' and/or trigger ID list.
+        REMINDER : All orders that fall under that'productType' and 'symbol' will be cancelled.
+        """   
+        symbol = message_data.get('instId')
+        try:
+            cancel = self.__client_api.mix_cancel_plan_order(symbol=symbol, 
+                                                             planType=const.STOP_LOSS_PLAN_TYPE)
+            logger.info(f"cancel trigger order status :{cancel.get('msg')} for {symbol}")
+
+        except BitgetAPIException as e:
+            logger.error(f'{e.code}: {e.message} to place order tp and sl order')
+            return None
+
+
+
+            

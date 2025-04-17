@@ -1,38 +1,29 @@
 import plotly.graph_objects as go
 import pandas as pd
+import os
+from trade_bot.utils.enums import TRADE_DIR
 
 
 class MyGraph:
-    __first_freq = None
-    __second_freq = None
+    __freq = None
     __symbol = None
     __df_candidat = pd.DataFrame()
-    __df_above_candidat = pd.DataFrame()
 
     def __init__(self, symbol: str):
         self.__symbol = symbol
 
     def set_candidat(self, df1: pd, freq: str):
         self.__df_candidat = df1
-        self.__first_freq = freq
+        self.__freq = freq
 
-    def set_above_candidat(self, df1: pd, freq: str):
-        self.__df_above_candidat = df1
-        self.__second_freq = freq
+    def get_chart(self, client_oid, display = True):
+        symbol = self.__symbol
+        df1 = self.__df_candidat
+        period = self.__freq
 
-    def show_chart(self):
-        self.__show_charts(self.__df_candidat,
-                           self.__symbol,
-                           self.__first_freq)
-        # to display both graph 
-        #self._show_charts(self,
-        #                   self.__df_above_candidat,
-        #                   self.__symbol,
-        #                   self.__second_freq)
-
-    def __show_charts(self, df1: pd, symbol: str, period: str):
         # Ensure 'Date' column exists if using DatetimeIndex
         df1['Date'] = df1.index
+        symbol = self.__symbol
         fig = go.Figure()
 
         # Add Candlestick chart
@@ -155,6 +146,10 @@ class MyGraph:
             width=900,  # Set width in pixels
             height=800)
 
-        # fig.write_image(f"{symbol}.pdf")
-        fig.show()
-    
+        if display: 
+            fig.show()
+        else:
+            output_dir = TRADE_DIR
+            os.makedirs(output_dir, exist_ok=True)  # create directory if it doesn't exist
+            file_path = os.path.join(output_dir, f"{client_oid}-{symbol}.html")
+            fig.write_html(file_path)

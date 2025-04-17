@@ -50,10 +50,10 @@ class MyStrategy:
                     logger.debug(f'{self._symbol} : rule 1 : passed')
                     return True
                 else:
-                    logger.info(f'{self._symbol} : rule 1 : failed')
+                    logger.debug(f'{self._symbol} : rule 1 : failed')
                     return False
             else:
-                logger.info(f'{self._symbol} : rule 1 : failed')
+                logger.debug(f'{self._symbol} : rule 1 : failed')
                 return False
 
         # or we have at leat one crossing_kcu, one touching bbu and one crossing hma 
@@ -66,13 +66,13 @@ class MyStrategy:
                     logger.debug(f'{self._symbol} : rule 1 : passed')
                     return True
                 else:
-                    logger.info(f'{self._symbol} : rule 1 : failed')
+                    logger.debug(f'{self._symbol} : rule 1 : failed')
                     return False
             else:
-                logger.info(f'{self._symbol} : rule 1 : failed')
+                logger.debug(f'{self._symbol} : rule 1 : failed')
                 return False
         else:
-            logger.info(f'{self._symbol} : rule 1 : failed')
+            logger.debug(f'{self._symbol} : rule 1 : failed')
             return False
         
     #########################################################################################################################
@@ -84,7 +84,7 @@ class MyStrategy:
         last_index = df0[df0['crossing_hma'] == True].index[-1]
         df_at_hma_and_after = df0[df0.index >= last_index]
         if df_at_hma_and_after["crossing_bbm"].any():
-            logger.info(f'{self._symbol} : rule 2 : failed')
+            logger.debug(f'{self._symbol} : rule 2 : failed')
             return False
         # remove the last_hma row and keep all of them after
         df_after_hma = df_at_hma_and_after.iloc[1:] 
@@ -93,10 +93,10 @@ class MyStrategy:
             return True
         else:
             if df_after_hma["crossing_kcu"].any() or df_after_hma["crossing_kcl"].any():
-                logger.info(f'{self._symbol} : rule 2 : failed')
+                logger.debug(f'{self._symbol} : rule 2 : failed')
                 return False
             elif df_after_hma["touching_bbu"].any() or df_after_hma["touching_bbl"].any():
-                logger.info(f'{self._symbol} : rule 2 : failed')
+                logger.debug(f'{self._symbol} : rule 2 : failed')
                 return False
             
         logger.debug(f'{self._symbol} : rule 2 : passed')
@@ -112,8 +112,7 @@ class MyStrategy:
         elif df1["touching_bbu"].any():
             bb_last_index = df1[df1['touching_bbu'] == True].index[-1]
         else :
-            logger.debug(f'{self._symbol} : rule 3 : failed, we should have at least one touching_bbl or one touching_bbu from rule 1')
-            logger.info(f'{self._symbol} : rule 3 : failed')
+            logger.debug(f'{self._symbol} : rule 3 : failed')
             return False
 
         delta = hma_last_index - bb_last_index
@@ -124,7 +123,7 @@ class MyStrategy:
             logger.debug(f'{self._symbol} : rule 3 : passed')
             return True
         else :
-            logger.info(f'{self._symbol} : rule 3 : failed')
+            logger.debug(f'{self._symbol} : rule 3 : failed')
             return False
 
     #########################################################################################################################
@@ -144,7 +143,7 @@ class MyStrategy:
                 logger.debug(f'{self._symbol} : rule 4 : passed')
                 return True
             else:
-                logger.info(f'{self._symbol} : rule 4 : failed')
+                logger.debug(f'{self._symbol} : rule 4 : failed')
                 return False
         elif df1["side"].eq(const.OPEN_LONG).any():
             # we are in a trading short opportunity
@@ -157,7 +156,7 @@ class MyStrategy:
                 logger.debug(f'{self._symbol} : rule 4 : passed')
                 return True
             else:
-                logger.info(f'{self._symbol} : rule 4 :failed')
+                logger.debug(f'{self._symbol} : rule 4 :failed')
                 return False
             
     #########################################################################################################################
@@ -178,7 +177,7 @@ class MyStrategy:
             logger.debug(f'interval is between {bbl_last_index} and {hma_last_index} for {self._symbol}')
             lowest_price = df_interval.min()
             if lowest_price > boosted_hma_crossing_price :
-                logger.info(f'{self._symbol} : rule 5 : failed')
+                logger.debug(f'{self._symbol} : rule 5 : failed')
                 return False
             else:
                 logger.debug(f'{self._symbol} : rule 5 : passed')
@@ -190,7 +189,7 @@ class MyStrategy:
             highest_price = df_interval.max() 
             logger.debug(f'the highest price in the interval is {highest_price} for {self._symbol}')       
             if highest_price < boosted_hma_crossing_price:
-                logger.info(f'{self._symbol} : rule 5 : failed')
+                logger.debug(f'{self._symbol} : rule 5 : failed')
                 return False
             else:
                 logger.debug(f'{self._symbol} : rule 5 : passed')
