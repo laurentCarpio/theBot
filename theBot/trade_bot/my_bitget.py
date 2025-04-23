@@ -10,7 +10,7 @@ from trade_bot.utils.frequency_utils import getFreq_in_ms
 from pybitget.stream import BitgetWsClient, build_subscribe_req, handel_error
 from pybitget.exceptions import BitgetAPIException
 from pybitget import Client
-
+import os
 
 class MyBitget:
     __all_symbols = None
@@ -22,17 +22,17 @@ class MyBitget:
 
     def __init__(self):
         self.__my_account = MyAccount()
-        self.__client_api = Client(const.API_KEY,
-                             const.SECRET_KEY,
-                             const.API_PASSPHRASE,
-                             verbose=True)
-        
+        API_KEY = os.getenv("API_KEY")
+        SECRET_KEY = os.getenv("SECRET_KEY")
+        API_PASSPHRASE = os.getenv("API_PASSPHRASE")
+        if not all([API_KEY, SECRET_KEY, API_PASSPHRASE]):
+            raise EnvironmentError("Missing one or more API environment variables.")
+
+        self.__client_api = Client(API_KEY, SECRET_KEY, API_PASSPHRASE, verbose=True)
         self.__all_symbols = self.getAllTickers()
         self.__set_all_to_one_way_position_mode() 
 
-        self.__client_ws = BitgetWsClient(const.API_KEY,
-                                          const.SECRET_KEY,
-                                          const.API_PASSPHRASE,
+        self.__client_ws = BitgetWsClient(API_KEY, SECRET_KEY, API_PASSPHRASE,
                                           const.CONTRACT_WS_PRIVATE_URL,
                                           #const.CONTRACT_WS_PUBLIC_URL, 
                                           verbose=True).error_listener(handel_error).build()
@@ -129,7 +129,7 @@ class MyBitget:
                 return df
             else:
                 if do_one:
-                    return pd.DataFrame(pd.Series(['MEUSDT'], name='symbol'))
+                    return pd.DataFrame(pd.Series(['PUFFERUSDT'], name='symbol'))
                 else:
                     df = pd.read_csv(f'{const.DATA_DIR}/all_tickers.csv', index_col=0)
                     logger.debug('getting tickers from the debug directory')

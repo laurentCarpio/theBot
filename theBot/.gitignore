@@ -1,26 +1,43 @@
-# Python virtual environment
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
 .venv/
-.env
+venv/
+env/
 
-# macOS metadata
-.DS_Store
-theBot/.DS_Store
-theBot/trade_bot/.DS_Store
-
-# VS Code workspace
+# VS Code settings
 .vscode/
 *.code-workspace
 
-# Logs and runtime files
+# Environment variables
+.env
+.env.*
+
+# Jupyter Notebook checkpoints and notebooks
+.ipynb_checkpoints/
+*.ipynb
+
+# macOS system files
+.DS_Store
+
+# Logs and reports
 *.log
 *.csv
 
-# Ignore all Jupyter Notebooks
-*.ipynb
+# Docker
+*.tar
+docker-compose.override.yml
 
-# Notebooks output (optional)
-*.ipynb_checkpoints/
+# Local test files or scratch code
+theBot/misc/
+theBot/*.ipynb
 
-# Optional - any local data
+# Ignore compiled C extensions (if ever used)
+*.so
+
+# Ignore test outputs and data
 theBot/trade_bot/data/
 theBot/trade_bot/reports/

@@ -19,9 +19,11 @@ def find_opportunities():
                 if my_etl.prep_row():
                     logger.info(f'{the_symbol} : validated')
                     clientOid = my_bitget.place_order(my_etl.get_row())
-                    my_etl.display_chart(clientOid, display= False)
+                    if clientOid :
+                        my_etl.display_chart(clientOid, display= False)
         logger.info("end of the for iteration, go to sleep before new iteration")
-        time.sleep(3600)
+        # the for loop takes 25 min so we take 5 min break 
+        time.sleep(300)
 
 if __name__ == '__main__':
      find_opportunities()

@@ -45,8 +45,7 @@ class MyAccount:
             else :
                  # for testing and debug trade = 8$ max
                  logger.debug(f'the usdt available is {usdt_avail}')
-                 return float(8.0)
-                 # return usdt_avail
+                 return usdt_avail
 
 
     

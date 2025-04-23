@@ -20,21 +20,37 @@ class MyContract:
             limitOpenTime = int(df0['limitOpenTime'].iloc[-1])
             openTime = safe_int(df0['openTime'].iloc[-1], CONTRACT_OPEN_TIME_INDEF)
             if self.__is_contract_open(limitOpenTime, openTime):
-                self.__price_end_step = float(df0['priceEndStep'].iloc[-1])
-                self.__minTradeUSDT = float(df0['minTradeUSDT'].iloc[-1])
-                self.__price_place = int(df0['pricePlace'].iloc[-1])
-                self.__volume_place = int(df0['volumePlace'].iloc[-1])
+                self.__set_price_end_step(float(df0['priceEndStep'].iloc[-1]))
+                self.__set_minTradeUSDT(float(df0['minTradeUSDT'].iloc[-1]))
+                self.__set_price_place(int(df0['pricePlace'].iloc[-1]))
+                self.__set_volume_place(int(df0['volumePlace'].iloc[-1]))
                 self.__is_not_valid_or_not_opened = False
         else :
             pass
 
     def assign_contract_value(self, price_end_step, minTradeUSDT, price_place, volume_place, is_not_valid_or_not_opened):
-        self.__price_end_step = price_end_step
-        self.__minTradeUSDT = minTradeUSDT
-        self.__price_place = price_place
-        self.__volume_place = volume_place      
+        self.__set_price_end_step(price_end_step)
+        self.__set_minTradeUSDT(minTradeUSDT)
+        self.__set_price_place(price_place)
+        self.__set_volume_place(volume_place)      
         self.__is_not_valid_or_not_opened = is_not_valid_or_not_opened
 
+    def __set_price_end_step(self, price_end_step):
+        logger.debug(f"{self.__symbol} : price_end_step is {price_end_step}")
+        self.__price_end_step = price_end_step
+
+    def __set_minTradeUSDT(self, minTradeUSDT):
+        logger.debug(f"{self.__symbol} : minTradeUSDT is {minTradeUSDT}")
+        self.__minTradeUSDT = minTradeUSDT
+
+    def __set_price_place(self, price_place):
+        logger.debug(f"{self.__symbol} : price_place is {price_place}")
+        self.__price_place = price_place
+
+    def __set_volume_place(self, volume_place):
+        logger.debug(f"{self.__symbol} : volume_place is {volume_place}")
+        self.__volume_place = volume_place
+    
     def get_price_end_step(self):
         return self.__price_end_step
 
@@ -49,9 +65,6 @@ class MyContract:
     
     def is_not_valid_or_not_opened(self):
         return self.__is_not_valid_or_not_opened
-    
-    def get_minTradeUSDT(self):
-        return self.__minTradeUSDT
 
     def __is_contract_exist(self, df0: pd) -> bool:
         if df0 is not None and has_not_empty_column(df0, ['limitOpenTime','minTradeUSDT','priceEndStep','volumePlace','pricePlace','openTime']):
@@ -62,7 +75,7 @@ class MyContract:
 
     def __is_contract_open(self, limitOpenTime, openTime) -> bool:
         if limitOpenTime != -1:
-            logger.debug(f"{self.__symbol} : failed because limitOpenTime != -1")
+            logger.debug(f"{self.__symbol} : failed because limitOpenTime != -1" )
             return False
         elif openTime == CONTRACT_OPEN_TIME_INDEF:
             return True

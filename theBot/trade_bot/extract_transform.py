@@ -226,7 +226,7 @@ class ExtractTransform:
                
         # get the 2% usdt amount available for the trade
         usdt_avail = self.__mybit.get_my_account().get_usdt_per_trade(my_contract.get_minTradeUSDT())
-        if usdt_avail is None:
+        if usdt_avail == 0.0 :
             logger.debug(" no more usdt_avail for trading")
             return False
         
@@ -250,10 +250,11 @@ class ExtractTransform:
         df0['price']  = my_contract.adjust_price(df1.iloc[const.PRICE_RANK_IN_BIDS_ASKS,0])
         logger.debug(f"{self.__symbol} : price for trade is : {df0['price']}")
         
-        df0['size'] = my_contract.adjust_quantity(usdt_avail / df0['price'])    
+        df0['size'] = my_contract.adjust_quantity(usdt_avail / df0['price'])
+        logger.debug(f"{self.__symbol} : adjust quantity is : {df0['size']}")
         
         if my_contract.is_not_under_min_trade_amount(df0['size'], df0['price']):
-            logger.debug(f"{self.__symbol} : min 5 usdt for trade not reached {float(df0['size']) * float(df0['price'])}")
+            logger.debug(f"{self.__symbol} : min trade num for trade not reached {float(df0['size']) * float(df0['price'])}")
             return False
 
         # the estimate profit is the difference between the bbm and the close price
