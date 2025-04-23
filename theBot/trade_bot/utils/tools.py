@@ -20,30 +20,42 @@ def has_not_empty_column(df, column_list) -> bool:
             return False
     return True
 
-def move_one_unit(amount, side) -> str:
+def move_by_delta(amount, side, delta=1) -> str:
     """
-    Adds one smallest decimal unit to the given float or string number.
+    Moves the given amount by `delta` units based on its smallest decimal unit.
+    
+    Parameters:
+        amount (float or str): The value to modify.
+        side (str): Direction of the move, OPEN_SHORT adds, OPEN_LONG subtracts.
+        delta (int or float): Number of smallest units to move. Default is 1.
+
+    Returns:
+        str: The adjusted amount as a string.
+        
     Examples:
-        '0.0932' -> 0.0933
-        14 -> 15
-        0.49 -> 0.5
+        move_by_delta('0.0932', const.OPEN_SHORT, 5) -> '0.0937'
+        move_by_delta(14, const.OPEN_SHORT, 2) -> '16'
+        move_by_delta(0.49, const.OPEN_LONG, 3) -> '0.47'
     """
     value_str = str(amount)
-    
+
     if '.' in value_str:
         decimals = len(value_str.split('.')[-1])
         increment = 10 ** -decimals
     else:
+        decimals = 0
         increment = 1
-    
+
+    movement = delta * increment
+
     if side == const.OPEN_SHORT:
-        # for sell, execute_price must be > the trigger_price (minus 1)
-        return str(round(float(value_str) + increment, decimals if '.' in value_str else 0))
+        # for sell, execute_price must be > the trigger_price (add delta)
+        return str(round(float(value_str) + movement, decimals))
     elif side == const.OPEN_LONG:
-        # for buy, execute_price must be < the trigger_price (add 1)
-        return str(round(float(value_str) - increment, decimals if '.' in value_str else 0))
-    else :
-        return 0.0
+        # for buy, execute_price must be < the trigger_price (subtract delta)
+        return str(round(float(value_str) - movement, decimals))
+    else:
+        return '0.0'
 
 def is_place_order(client_oid : str) -> bool:
     if client_oid:
@@ -98,7 +110,7 @@ def __get_suffix_from_client_oid(client_oid):
 
 def __find_file_by_substring(directory, substring):
     for filename in os.listdir(directory):
-        if substring in filename:
+        if substring in filename and not filename.endswith(".html"):
             return os.path.join(directory, filename)
     return None  # if no match is found
 
@@ -106,8 +118,11 @@ def __find_file_by_substring(directory, substring):
 # not use anymore 
 ###################################################
 
-def round_one_digit_max(number):
-    return round(number, 1) if isinstance(number, (float, int)) else number
+def define_the_trailing_side(order_side) -> str:
+    if order_side == const.OPEN_SHORT:
+        return const.CLOSE_SHORT
+    elif order_side == const.OPEN_LONG:
+        return const.CLOSE_LONG
 
 def move_file(file_path, destination_dir):
     """Move a file to a new directory."""

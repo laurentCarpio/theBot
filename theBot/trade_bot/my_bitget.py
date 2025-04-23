@@ -73,28 +73,25 @@ class MyBitget:
         message_data = data.get('data')[0]
         logger.info(f"order channel received {message_data}")
         client_oid = message_data.get('clientOid')
-        if client_oid is not None:
-            if my_tool.is_place_order(message_data['clientOid']) :
-                if message_data['status'] == const.PLACE_ORDER_PARTIALLY_FILLED or message_data['status'] == const.PLACE_ORDER_FILLED:
-                    trade_dict = my_tool.read_order_file(client_oid)
-                    my_contract = MyContract(message_data.get('instId'))
-                    my_contract.assign_contract_value(trade_dict['contract_price_end_step'],
-                                                      trade_dict['contract_minTradeUSDT'],
-                                                      trade_dict['contract_price_place'],
-                                                      trade_dict['contract_volume_place'],
-                                                      False)
+        if my_tool.is_place_order(client_oid) :
+            if message_data['status'] == const.PLACE_ORDER_PARTIALLY_FILLED or message_data['status'] == const.PLACE_ORDER_FILLED:
+                trade_dict = my_tool.read_order_file(client_oid)
+                my_contract = MyContract(message_data.get('instId'))
+                my_contract.assign_contract_value(trade_dict['contract_price_end_step'],
+                                                    trade_dict['contract_minTradeUSDT'],
+                                                    trade_dict['contract_price_place'],
+                                                    trade_dict['contract_volume_place'],
+                                                    False)
 
-                    self.sl_place_order(message_data, trade_dict['place_order_preset_SL'], my_contract)
-                    self.tp_place_order(message_data, trade_dict['place_order_preset_TP'], my_contract)
+                self.sl_place_order(message_data, trade_dict['place_order_preset_SL'], my_contract)
+                self.tp_place_order(message_data, trade_dict['place_order_preset_TP'], my_contract)
 
     def on_orders_algo_message(self, data):
         logger.info(f"trigger channel received : {data}")
         message_data = data.get('data')[0]
-        client_oid = message_data.get('clientOid')
-        if client_oid is not None:
-            if message_data['planType'] == 'tp' and const.TRIGGER_ORDER_STATUS_EXECUTED == message_data['status']:
-                self.cancel_trigger_sl_order(message_data)
-                self.trail_place_order(message_data)
+        if message_data['planType'] == 'tp' and const.TRIGGER_ORDER_STATUS_EXECUTED == message_data['status']:
+            self.cancel_trigger_sl_order(message_data)
+            self.trail_place_order(message_data)
 
     def get_my_account(self):
         return self.__my_account
@@ -105,7 +102,7 @@ class MyBitget:
     def get_all_symbol(self) -> pd:
         df = self.remove_symbol_with_opened_position(self.__all_symbols)
         shuffled_df = df.sample(frac=1).reset_index(drop=True)
-        logger.info('getting all tickers from bitget without opened positions')
+        logger.debug('getting all tickers from bitget without already opened positions')
         return shuffled_df['symbol']
     
     def __set_all_to_one_way_position_mode(self):
@@ -147,8 +144,14 @@ class MyBitget:
         try:
             positions = self.__client_api.mix_get_all_positions()
             df2 = pd.DataFrame(positions.get('data'))
-            # Remove rows from df1 where 'symbol' is in df2['symbol']
-            return df1[~df1['symbol'].isin(df2['symbol'])]
+            
+            # check first if we have open position then 
+            if df2.empty:
+                return df1
+            else:
+                # Remove rows from df1 where 'symbol' is in df2['symbol'] 
+                return df1[~df1['symbol'].isin(df2['symbol'])]
+                
         except BitgetAPIException as e:
             logger.error(f'{e.code}: {e.message} to get all positions')
             return None
@@ -235,7 +238,7 @@ class MyBitget:
              #baseVolume give the size of the last filled position, this is what we have to use to open tp and sl 
              baseVolume = my_contract.adjust_quantity(float(message_data.get('baseVolume')))
              side = message_data.get('side')
-             executePrice = my_contract.adjust_price(float(my_tool.move_one_unit(sl_place_order_preset, side)))
+             executePrice = my_contract.adjust_price(float(my_tool.move_by_delta(sl_place_order_preset, side)))
                 
              sl = self.__client_api.mix_tpsl_plan_order(symbol= symbol,
                                                         planType=const.STOP_LOSS_PLAN_TYPE,
@@ -256,9 +259,9 @@ class MyBitget:
              tp_client_oid = my_tool.get_clientOID_for(clientOID=message_data.get('clientOid'), the_suffix=const.CLIENT_0ID_TAKE_PROFIT)
              symbol = message_data.get('instId')
              #baseVolume give the size of the last filled position, this is what we have to use to open tp and sl 
-             baseVolume = my_contract.adjust_quantity(float(message_data.get('baseVolume'))/2)
+             baseVolume = my_contract.adjust_quantity(float(message_data.get('baseVolume'))/2.0)
              side = message_data.get('side')
-             executePrice = my_contract.adjust_price(float(my_tool.move_one_unit(tp_place_order_preset, side)))
+             executePrice = my_contract.adjust_price(float(my_tool.move_by_delta(tp_place_order_preset, side)))
              
              tp = self.__client_api.mix_tpsl_plan_order(symbol=symbol,
                                                         planType=const.TAKE_PROFIT_PLAN_TYPE,
@@ -278,8 +281,10 @@ class MyBitget:
         try:
             symbol = message_data.get('instId')
             size = message_data.get('size')
-            triggerPrice = message_data.get('executePrice')
-            side = message_data.get('side')
+            triggerPrice = my_tool.move_by_delta(message_data.get('executePrice'),
+                                                 message_data.get('side'), 
+                                                 const.TRAILING_DELTA_PRICE_MOVED)
+            side = my_tool.define_the_trailing_side(message_data.get('side'))
 
             trail = self.__client_api.mix_trail_plan_order(symbol=symbol,
                                                            size=size,

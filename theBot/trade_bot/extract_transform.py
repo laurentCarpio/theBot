@@ -101,7 +101,7 @@ class ExtractTransform:
         # source fermeture
         df1.ta.bbands(close=df1['close'],
                           length=20, std=3, mamode='sma',
-                          talib=True, append=True)
+                          talib=False, append=True)
         # ajout keltner
         # longueur = 20
         # multi = 2
