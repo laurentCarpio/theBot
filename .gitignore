@@ -16,6 +16,9 @@ env/
 .env
 .env.*
 
+# Ignore Dockerfile to avoid pushing secrets
+theBot/Dockerfile
+
 # Jupyter Notebook checkpoints and notebooks
 .ipynb_checkpoints/
 *.ipynb

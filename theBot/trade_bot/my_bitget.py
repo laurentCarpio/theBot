@@ -22,17 +22,20 @@ class MyBitget:
 
     def __init__(self):
         self.__my_account = MyAccount()
-        API_KEY = os.getenv("API_KEY")
-        SECRET_KEY = os.getenv("SECRET_KEY")
-        API_PASSPHRASE = os.getenv("API_PASSPHRASE")
-        if not all([API_KEY, SECRET_KEY, API_PASSPHRASE]):
+
+        api_key = os.getenv("API_KEY", "").strip()
+        api_secret = os.getenv("API_SECRET", "").strip()
+        api_passphrase = os.getenv("API_PASSPHRASE", "").strip()
+
+        if not all([api_key, api_secret, api_passphrase]):
+            print("ENV CHECK FAILED:")
             raise EnvironmentError("Missing one or more API environment variables.")
 
-        self.__client_api = Client(API_KEY, SECRET_KEY, API_PASSPHRASE, verbose=True)
+        self.__client_api = Client(api_key, api_secret, api_passphrase, verbose=True)
         self.__all_symbols = self.getAllTickers()
         self.__set_all_to_one_way_position_mode() 
 
-        self.__client_ws = BitgetWsClient(API_KEY, SECRET_KEY, API_PASSPHRASE,
+        self.__client_ws = BitgetWsClient(api_key, api_secret, api_passphrase,
                                           const.CONTRACT_WS_PRIVATE_URL,
                                           #const.CONTRACT_WS_PUBLIC_URL, 
                                           verbose=True).error_listener(handel_error).build()
