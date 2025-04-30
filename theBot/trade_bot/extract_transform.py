@@ -1,6 +1,5 @@
 import pandas as pd
 import pandas_ta as ta
-import trade_bot.utils.enums as const
 from trade_bot.utils.trade_logger import logger
 from trade_bot.display.my_graph import MyGraph
 from trade_bot.utils.frequency_utils import freq_to_resample
@@ -10,6 +9,7 @@ from trade_bot.my_strategy import MyStrategy
 
 class ExtractTransform:
     __symbol = None
+    __myconst = None
     __df_data = pd.DataFrame()
     __mybit = None
     __my_strategy = None
@@ -21,8 +21,9 @@ class ExtractTransform:
     def __init__(self, symbol: str, mybit: MyBitget):
         self.__symbol = symbol
         self.__mybit = mybit
-        self.__my_strategy = MyStrategy(symbol)
-        self.__myGraph = MyGraph(symbol)
+        self.__myconst = mybit.get_S3_config()
+        self.__my_strategy = MyStrategy(symbol,self.__myconst )
+        self.__myGraph = MyGraph(symbol, self.__myconst)
 
     def __set_row(self, row: pd):
         self.__df_row = row
@@ -47,11 +48,11 @@ class ExtractTransform:
         self.__myGraph.get_chart(client_oid, display)
 
     def find_candidat(self) -> bool:
-        for index, freq in enumerate(const.MY_FREQUENCY_LIST):
+        for index, freq in enumerate(self.__myconst.get("MY_FREQUENCY_LIST")):
             logger.debug(f'{self.__symbol} : validation at frequency {freq}')
             self.set_data(self.__mybit.get_candles(self.__symbol, freq))
             if self.__prepare_data_for(freq):
-                if self.__my_strategy.validate_rules(self.__df_data.iloc[const.STRATEGY_WINDOW:].copy()):
+                if self.__my_strategy.validate_rules(self.__df_data.iloc[self.__myconst.get("STRATEGY_WINDOW"):].copy()):
                     # the next good candidat replace the last one found
                     logger.debug(f'{self.__symbol} : good candidat at this {freq}')
                     self.__set_candidat(self.get_data(), freq)
@@ -70,7 +71,7 @@ class ExtractTransform:
                      
     def __prepare_data_for(self, freq: str) -> bool:
         df1 = self.get_data().copy()
-        if len(df1.columns) < 7 or len(df1) < const.MIN_CANDLES_FOR_INDICATORS:
+        if len(df1.columns) < 7 or len(df1) < self.__myconst.get("MIN_CANDLES_FOR_INDICATORS"):
             logger.debug(f'{self.__symbol} : empty dataframe or not enough candles to validate the strategy')
             return False
         else :
@@ -175,11 +176,11 @@ class ExtractTransform:
 
         # check only on the const.STRATEGY_WINDOW for the side of the trade
         # and set the side after 
-        df_last_rows = df1.iloc[const.STRATEGY_WINDOW:].copy()
+        df_last_rows = df1.iloc[self.__myconst.get("STRATEGY_WINDOW"):].copy()
         if df_last_rows["crossing_kcl"].any():
-            df1['side'] = const.OPEN_LONG
+            df1['side'] = self.__myconst.get("OPEN_LONG")
         elif df_last_rows["crossing_kcu"].any():
-            df1['side'] = const.OPEN_SHORT
+            df1['side'] = self.__myconst.get("OPEN_SHORT")
         else:
             df1['side'] = 'no_trade'
 
@@ -197,19 +198,18 @@ class ExtractTransform:
         df_row['highest'] = 0.0
         df_row['lowest'] = 0.0
         
-        my_contract = self.__mybit.get_contract(self.__symbol)
         my_contract = MyContract(self.__symbol, self.__mybit.get_contract(self.__symbol))
         if my_contract.is_not_valid_or_not_opened():
             return False
 
         # set the stop lost for OPEN_LONG
-        if df_row["side"] == const.OPEN_LONG :
-            df_row['lowest'] = df1.iloc[-(int(const.MAX_MIN_VALUE_WINDOW)):, df1.columns.get_loc('low')].min()
-            presetStopLossPrice = my_contract.adjust_price(float(df_row['lowest']) - (float(df_row['lowest']) * float(const.STOP_LOST)))
+        if df_row["side"] == self.__myconst.get("OPEN_LONG") :
+            df_row['lowest'] = df1.iloc[-(int(self.__myconst.get("MAX_MIN_VALUE_WINDOW"))):, df1.columns.get_loc('low')].min()
+            presetStopLossPrice = my_contract.adjust_price(float(df_row['lowest']) - (float(df_row['lowest']) * float(self.__myconst.get("STOP_LOST"))))
         # set the stop lost for OPEN_SHORT
-        elif df_row["side"] == const.OPEN_SHORT :
-            df_row['highest'] = df1.iloc[-(int(const.MAX_MIN_VALUE_WINDOW)):, df1.columns.get_loc('high')].max()
-            presetStopLossPrice = my_contract.adjust_price(float(df_row['highest']) + (float(df_row['highest']) * float(const.STOP_LOST)))
+        elif df_row["side"] == self.__myconst.get("OPEN_SHORT") :
+            df_row['highest'] = df1.iloc[-(int(self.__myconst.get("MAX_MIN_VALUE_WINDOW"))):, df1.columns.get_loc('high')].max()
+            presetStopLossPrice = my_contract.adjust_price(float(df_row['highest']) + (float(df_row['highest']) * float(self.__myconst.get("STOP_LOST"))))
 
         df_row['presetStopLossPrice'] = presetStopLossPrice
 
@@ -233,9 +233,9 @@ class ExtractTransform:
         # get the bids and asks list 
         bids_asks = self.__mybit.get_bids_and_asks(self.__symbol)
         
-        if df0['side'] == const.OPEN_SHORT:
+        if df0['side'] == self.__myconst.get("OPEN_SHORT"):
             df1 = pd.DataFrame(bids_asks.get('data')['asks'])
-        elif df0['side'] == const.OPEN_LONG:
+        elif df0['side'] == self.__myconst.get("OPEN_LONG"):
             df1 = pd.DataFrame(bids_asks.get('data')['bids'])
         else :
             logger.error(f"{self.__symbol} : not a valid side : {df0['side']}")
@@ -247,7 +247,7 @@ class ExtractTransform:
         #  - we must place your limit buy order below or equal to the best bid price.
         # the rule is to choice the PRICE_RANK_IN_BIDS_ASKS position
         ########################################################################################
-        df0['price']  = my_contract.adjust_price(df1.iloc[const.PRICE_RANK_IN_BIDS_ASKS,0])
+        df0['price']  = my_contract.adjust_price(df1.iloc[self.__myconst.get("PRICE_RANK_IN_BIDS_ASKS"),0])
         logger.debug(f"{self.__symbol} : price for trade is : {df0['price']}")
         
         df0['size'] = my_contract.adjust_quantity(usdt_avail / df0['price'])
@@ -260,14 +260,14 @@ class ExtractTransform:
         # the estimate profit is the difference between the bbm and the close price
         df0['estim_profit'] = abs(df0['bbm'] - df0['price'])
 
-        if df0['side'] == const.OPEN_LONG:
+        if df0['side'] == self.__myconst.get("OPEN_LONG"):
             # the ratio is calculated with the price from the asks list
             df0['ratio'] = df0['estim_profit'] / (df0['price'] - df0['presetStopLossPrice'])
         else:
             # the ratio is calculated with the price from the bids list
             df0['ratio'] = df0['estim_profit']  / (df0['presetStopLossPrice'] - df0['price'])
 
-        if df0['ratio'] > const.ACCEPTABLE_RATIO:
+        if df0['ratio'] > self.__myconst.get("ACCEPTABLE_RATIO"):
             logger.debug(f"{self.__symbol} :ratio {df0['ratio']} ok for trade")
             logger.debug('XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX')
             df0['price_end_step'] = my_contract.get_price_end_step()

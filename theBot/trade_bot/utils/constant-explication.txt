@@ -1,0 +1,55 @@
+
+###############################################################################
+# the number of candles the algo check for a GO to trade
+STRATEGY_WINDOW = -10
+
+# the number of candles used to get the lowest or highest value in the period
+MAX_MIN_VALUE_WINDOW = 6
+
+# define the number of candle allowed between the last testing_bb(u,l) and 
+# the last crossing_hma. not more than x candles. 
+MAX_CANDLES_BETWEEN_HMA_AND_BB = 4
+
+# use of k_line_type = mark instead of k_line_type = MARKET
+KLINE_TYPE = 'mark'
+
+# in fact min is 21 for HMA
+MIN_CANDLES_FOR_INDICATORS = 50
+
+# the stop lost is set to be x% lower or higher of the close
+STOP_LOST = 0.002
+
+# the highest (lowest) cannot be more than 105% of the hma crossing
+ACCEPTABLE_MARGE = 1.05
+
+# we want to buy at the lowest price possible
+# the limit buy order must be below or equal to the best bid price 
+# for now the rule is to choice the PRICE_RANK_IN_BIDS_ASKS position
+
+# we want to sell at the highest price possible
+# You must place your limit sell order above or equal to the best ask price.
+# the rule is to choice the PRICE_RANK_IN_BIDS_ASKS position 
+PRICE_RANK_IN_BIDS_ASKS = 1
+
+# the acceptable ratio to open a trade, below this number the possible profit 
+# is not enough (fee, spread, risk ,etc..)
+ACCEPTABLE_RATIO = 1.2
+
+# % of the trailing stop to follow for execution 
+CALL_BACK_RATIO = 1.5
+
+# the amount we add or soustract (depending the side) to the executive price 
+# to get the launch price of the trailing stop order 
+TRAILING_DELTA_PRICE_MOVED = 5 
+
+# the risk management 
+# the % of value per trade 
+PERCENTAGE_VALUE_PER_TRADE = 0.1   # 1% du total disponible 
+###############################################################################
+
+
+
+
+
+
+

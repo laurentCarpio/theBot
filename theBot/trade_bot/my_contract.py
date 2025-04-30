@@ -1,6 +1,5 @@
 import time
 import pandas as pd
-from trade_bot.utils.enums import CONTRACT_OPEN_TIME_INDEF
 from decimal import Decimal, ROUND_DOWN
 from trade_bot.utils.tools import has_not_empty_column, safe_int
 from trade_bot.utils.trade_logger import logger
@@ -12,13 +11,14 @@ class MyContract:
     __minTradeUSDT = None
     __volume_place = None
     __is_not_valid_or_not_opened = True
+    __CONTRACT_OPEN_TIME_INDEF = -1
 
 
     def __init__(self, symbol: str, df0: pd=None):
         self.__symbol = symbol
         if self.__is_contract_exist(df0):
             limitOpenTime = int(df0['limitOpenTime'].iloc[-1])
-            openTime = safe_int(df0['openTime'].iloc[-1], CONTRACT_OPEN_TIME_INDEF)
+            openTime = safe_int(df0['openTime'].iloc[-1], self.__CONTRACT_OPEN_TIME_INDEF)
             if self.__is_contract_open(limitOpenTime, openTime):
                 self.__set_price_end_step(float(df0['priceEndStep'].iloc[-1]))
                 self.__set_minTradeUSDT(float(df0['minTradeUSDT'].iloc[-1]))
@@ -77,7 +77,7 @@ class MyContract:
         if limitOpenTime != -1:
             logger.debug(f"{self.__symbol} : failed because limitOpenTime != -1" )
             return False
-        elif openTime == CONTRACT_OPEN_TIME_INDEF:
+        elif openTime == self.__CONTRACT_OPEN_TIME_INDEF:
             return True
         else :        
             current_time_ms = int(time.time() * 1000)

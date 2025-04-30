@@ -6,7 +6,7 @@
 
 __version__ = '1.0.8'
 
-from loguru import logger
+from trade_bot.utils.trade_logger import logger
 from pybitget.client import Client
 from pybitget import utils
 from pybitget import exceptions

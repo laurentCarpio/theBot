@@ -1,0 +1,92 @@
+{
+  "CONTRACT_WS_PUBLIC_URL": "wss://ws.bitget.com/v2/ws/public",
+  "CONTRACT_WS_PRIVATE_URL": "wss://ws.bitget.com/v2/ws/private",
+
+  "MY_FREQUENCY_LIST": ["3m", "5m", "15m", "30m", "1H", "2H", "4H", "6H", "12H", "1D"],
+
+  "THE_FULL_FREQUENCY_LIST": ["1m", "3m", "5m", "15m", "30m", "1H", "2H", "4H", "6H", "12H", "1D", "3D", "1W"],
+
+  "FREQUENCY_MAPPING": {
+    "5m": "2H",
+    "15m": "2H",
+    "30m": "2H",
+    "1H": "4H",
+    "2H": "6H",
+    "4H": "12H"
+  },
+
+  "STRATEGY_WINDOW": -10,
+  "MAX_MIN_VALUE_WINDOW": 6,
+  "MAX_CANDLES_BETWEEN_HMA_AND_BB": 4,
+  "KLINE_TYPE": "mark",
+  "MIN_CANDLES_FOR_INDICATORS": 50,
+  "STOP_LOST": 0.002,
+  "ACCEPTABLE_MARGE": 1.05,
+  "PRICE_RANK_IN_BIDS_ASKS": 1,
+  "ACCEPTABLE_RATIO": 1.2,
+  "CALL_BACK_RATIO": 1.5,
+  "TRAILING_DELTA_PRICE_MOVED": 5,
+  "PERCENTAGE_VALUE_PER_TRADE": 0.1,
+
+  "OPEN_LONG": "buy",
+  "CLOSE_LONG": "sell",
+  "OPEN_SHORT": "sell",
+  "CLOSE_SHORT": "buy",
+
+  "ORDER_TYPE_LIMIT": "limit",
+  "TIME_IN_FORCE_TYPES": ["normal", "post_only", "fok", "ioc"],
+  "REDUCE_ONLY_YES": "YES",
+  "REDUCE_ONLY_NO": "NO",
+  "ONE_WAY_MODE_POSITION": "one_way_mode",
+  "DEFAULT_LEVERAGE": "1",
+  "TRIGGER_TYPES": ["fill_price", "mark_price"],
+
+  "TRIGGER_ORDER_STATUS_LIVE": "live",
+  "TRIGGER_ORDER_STATUS_EXECUTED": "executed",
+  "TRIGGER_ORDER_STATUS_FAIL_EXECUTED": "fail_execute",
+  "TRIGGER_ORDER_STATUS_CANCELLED": "cancelled",
+  "TRIGGER_ORDER_STATUS_EXECUTING": "executing",
+
+  "PLACE_ORDER_LIVE": "live",
+  "PLACE_ORDER_PARTIALLY_FILLED": "partially_filled",
+  "PLACE_ORDER_FILLED": "filled",
+  "PLACE_ORDER_CANCELLED": "canceled",
+
+  "TRAILING_PLAN_TYPE": "track_plan",
+  "STOP_LOSS_PLAN_TYPE": "loss_plan",
+  "TAKE_PROFIT_PLAN_TYPE": "profit_plan",
+
+  "PRODUCT_TYPE_USED": "usdt-futures",
+  "MARGIN_COIN_USED": "USDT",
+  "MARGIN_MODE": "isolated",
+
+  "S3_BUCKET": "tradebot-thebot-bucket",
+  "S3_TRADE_DIR": "reports/trade/",
+  "S3_DATA_DIR": "data",
+  "CLIENT_OID_ORDER": "CR",
+  "CLIENT_OID_TAKE_PROFIT": "TP",
+  "CLIENT_OID_STOP_LOSS": "SL",
+  "CLIENT_OID_TRAILING_LOSS": "TR",
+  
+  "LOG_LEVEL": "INFO", 
+  "CONFIG_REFRESH_HOUR": 0,
+  "CONFIG_REFRESH_MINUTE": 7,
+  "CONFIG_REFRESH_SECOND": 0,
+  
+  "LOG_DICT": {
+    "symbol": "",
+    "frequence": "",
+    "place_order_clientOID": "",
+    "place_order_orderID": "",
+    "place_order_msg": "",
+    "place_order_size": "",
+    "place_order_price": "",
+    "place_order_side": "",
+    "place_order_preset_SL": "",
+    "place_order_preset_TP": "",
+    "contract_price_end_step": "",
+    "contract_minTradeUSDT": "",
+    "contract_price_place": "",
+    "contract_volume_place": ""
+  }
+}

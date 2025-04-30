@@ -1,16 +1,20 @@
 import plotly.graph_objects as go
 import pandas as pd
+import boto3
 import os
-from trade_bot.utils.enums import TRADE_DIR
-
+import io
+from trade_bot.utils.trade_logger import logger
+from trade_bot.utils.s3_config_loader import S3ConfigLoader
 
 class MyGraph:
     __freq = None
     __symbol = None
+    __myconst = None
     __df_candidat = pd.DataFrame()
 
-    def __init__(self, symbol: str):
+    def __init__(self, symbol: str, config: S3ConfigLoader):
         self.__symbol = symbol
+        self.__myconst = config
 
     def set_candidat(self, df1: pd, freq: str):
         self.__df_candidat = df1
@@ -149,7 +153,20 @@ class MyGraph:
         if display: 
             fig.show()
         else:
-            output_dir = TRADE_DIR
-            os.makedirs(output_dir, exist_ok=True)  # create directory if it doesn't exist
-            file_path = os.path.join(output_dir, f"{client_oid}-{symbol}.html")
-            fig.write_html(file_path)
+            try:
+                s3 = boto3.client("s3")
+                bucket_name = self.__myconst.get("S3_BUCKET")
+                file_key = f"{self.__myconst.get('S3_TRADE_DIR')}{client_oid}_{symbol}.html"
+
+                # Save the figure to a HTML string
+                html_str = fig.to_html(full_html=True)
+
+                # Upload directly (after encoding to bytes)
+                s3.put_object(
+                    Bucket=bucket_name,
+                    Key=file_key.strip(),
+                    Body=html_str.encode('utf-8'),
+                    ContentType="text/html"
+                )
+            except Exception as e:
+                logger.debug(f"❌ Failed to upload {file_key}: {e}")

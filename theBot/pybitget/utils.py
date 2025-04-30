@@ -10,10 +10,8 @@ def sign(message, secret_key):
     d = mac.digest()
     return base64.b64encode(d)
 
-
 def pre_hash(timestamp, method, request_path, body):
     return str(timestamp) + str.upper(method) + request_path + body
-
 
 def get_header(api_key, a_sign, timestamp, passphrase):
     header = dict()
@@ -22,10 +20,7 @@ def get_header(api_key, a_sign, timestamp, passphrase):
     header[ACCESS_SIGN] = a_sign
     header[ACCESS_TIMESTAMP] = str(timestamp)
     header[ACCESS_PASSPHRASE] = passphrase
-    #header['paptrading'] = "1"    # for demo only
-
     return header
-
 
 def parse_params_to_str(params):
     url = '?'
@@ -34,10 +29,8 @@ def parse_params_to_str(params):
 
     return url[0:-1]
 
-
 def get_timestamp():
     return int(time.time() * 1000)
-
 
 def signature(timestamp, method, request_path, body, secret_key):
     if str(body) == '{}' or str(body) == 'None':
@@ -47,10 +40,8 @@ def signature(timestamp, method, request_path, body, secret_key):
     d = mac.digest()
     return base64.b64encode(d)
 
-
 def id_random(size=3, chars=string.ascii_uppercase + string.digits):
     return ''.join(random.choice(chars) for _ in range(size))
-
 
 def random_string(keyword=None, length=15):
     if keyword is None:

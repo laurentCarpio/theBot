@@ -1,12 +1,26 @@
 # %%
 from trade_bot.utils.trade_logger import logger
+from trade_bot.utils.s3_config_loader import S3ConfigLoader
 from trade_bot.my_bitget import MyBitget
 from trade_bot.extract_transform import ExtractTransform
 import time
+import logging
 
+config = S3ConfigLoader(bucket="tradebot-thebot-bucket", key="config/constants.json")
 
-# Create a single global instance to connect
-my_bitget = MyBitget()
+def apply_log_level_from_config():
+    level_str = config.get("LOG_LEVEL", "DEBUG").upper()
+    new_level = getattr(logging, level_str, logging.DEBUG)
+    logger.setLevel(new_level)
+    for handler in logger.handlers:
+        handler.setLevel(new_level)
+    logger.info(f"🔁 Log level updated dynamically to {level_str}")
+
+config.set_refresh_callback(apply_log_level_from_config)
+
+# Create a single global instance to connect to bitget
+my_bitget = MyBitget(config=config)
+
 
 def find_opportunities():
     while True:

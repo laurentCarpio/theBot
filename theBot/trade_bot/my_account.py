@@ -1,8 +1,8 @@
 from trade_bot.utils.trade_logger import logger
-from trade_bot.utils.enums import MARGIN_COIN_USED, PERCENTAGE_VALUE_PER_TRADE
 
 class MyAccount:
     __marginCoin = None
+    __percentage_value_per_trade = 0.0
     __frozen = 0.0
     __available = 0.0
     __maxOpenPosAvailable = 0.0
@@ -13,8 +13,9 @@ class MyAccount:
     __unrealizedPL = 0.0
     __ts = 0.0
 
-    def __init__(self):
-        self.__marginCoin = MARGIN_COIN_USED
+    def __init__(self, margin_coin, percentage_value):
+        self.__marginCoin = margin_coin
+        self.__percentage_value_per_trade = percentage_value
         
     def update(self, data):
         account_dir = data.get('data')[0]
@@ -37,7 +38,7 @@ class MyAccount:
         return self.__available
     
     def get_usdt_per_trade(self, minTradeUSDT: float) -> float:
-            usdt_avail = self.__available * float(PERCENTAGE_VALUE_PER_TRADE)
+            usdt_avail = self.__available * float(self.__percentage_value_per_trade)
             # if not enough money to trade 
             if usdt_avail < minTradeUSDT:
                 logger.debug(f'{usdt_avail} is under the usdt available is under the minTradeUSDT {minTradeUSDT}')

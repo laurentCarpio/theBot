@@ -1,6 +1,4 @@
 import re
-import trade_bot.utils.enums as const
-
 
 def getFreq_in_ms(frequency: str) -> int:
     # Regular expression to match any of the characters 'm', 'H', 'D', 'W', 'M'

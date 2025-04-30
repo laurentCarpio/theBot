@@ -2,10 +2,10 @@ import os
 import json
 import time
 import shutil
+import boto3
 import pandas as pd
-import trade_bot.utils.enums as const
 from trade_bot.utils.trade_logger import logger
-from trade_bot.utils.enums import ORDER_COUNTER, CLIENT_0ID_ORDER
+from botocore.exceptions import ClientError
 
 def safe_int(value, default=0):
     try:
@@ -20,7 +20,7 @@ def has_not_empty_column(df, column_list) -> bool:
             return False
     return True
 
-def move_by_delta(amount, side, delta=1) -> str:
+def move_by_delta(amount, side, myconst, delta=1) -> str:
     """
     Moves the given amount by `delta` units based on its smallest decimal unit.
     
@@ -48,44 +48,66 @@ def move_by_delta(amount, side, delta=1) -> str:
 
     movement = delta * increment
 
-    if side == const.OPEN_SHORT:
+    if side == myconst.get("OPEN_SHORT"):
         # for sell, execute_price must be > the trigger_price (add delta)
         return str(round(float(value_str) + movement, decimals))
-    elif side == const.OPEN_LONG:
+    elif side == myconst.get("OPEN_LONG"):
         # for buy, execute_price must be < the trigger_price (subtract delta)
         return str(round(float(value_str) - movement, decimals))
     else:
         return '0.0'
 
-def is_place_order(client_oid : str) -> bool:
+def is_place_order(client_oid : str, suffix: str ) -> bool:
     if client_oid:
-        return __get_suffix_from_client_oid(client_oid) == CLIENT_0ID_ORDER
+        return __get_suffix_from_client_oid(client_oid) == suffix
 
 def get_clientOID_for(clientOID : str, the_suffix):
     return __modify_client_oid(__get_prefix_from_client_oid(clientOID), the_suffix)
 
-def get_new_client_oid(suffix: str):
-    if os.path.exists(ORDER_COUNTER):
-        with open(ORDER_COUNTER, "r") as f:
-            order_counter = int(f.read().strip())
+def get_new_client_oid(suffix: str) -> str :
+    dynamodb = boto3.resource("dynamodb")
+    table = dynamodb.Table("TradebotOrderCounter")
+    counter_name = "order_id"
+
+    try:
+        response = table.update_item(
+            Key={"CounterName": counter_name},
+            UpdateExpression="SET CounterValue = if_not_exists(CounterValue, :start) + :inc",
+            ExpressionAttributeValues={
+                ":start": 1000,
+                ":inc": 1
+            },
+            ReturnValues="UPDATED_NEW"
+        )
+        next = response["Attributes"]["CounterValue"]
+        return f"{next}_{suffix}"  # Example: 101_CR, 101_TP, 101_SL and 101_TR
+    except ClientError as e:
+        logger.error("Error updating counter:", e)
+        raise
+
+def read_order_S3_file(client_oid, myconst) -> dict:
+    # Setup S3 client
+    s3 = boto3.client("s3")
+    bucket_name = myconst.get("S3_BUCKET")
+    prefix = myconst.get("S3_TRADE_DIR")
+    substring = client_oid  # your substring to search for
+
+    # List and filter files
+    response = s3.list_objects_v2(Bucket=bucket_name, Prefix=prefix)
+    if "Contents" in response:
+        for obj in response["Contents"]:
+            key = obj["Key"]
+            if substring in key and not key.endswith(".html"):  # ✅ Exclude HTML files
+                # Found a matching file; read its contents
+                s3_object = s3.get_object(Bucket=bucket_name, Key=key)
+                file_content = s3_object["Body"].read().decode("utf-8")
+                return json.loads(file_content)
+        else:
+            logger.debug(f"No matching files found for {substring}")
+            return None
     else:
-        order_counter = 0
-
-    order_counter += 1
-
-    with open(ORDER_COUNTER, "w") as f:
-        f.write(str(order_counter))
-
-    return f"{order_counter}_{suffix}"  # Example: 101_CR, 101_TP, 101_SL and 101_TR
-
-def read_order_file(client_oid):
-    loaded_data = {}
-    file_path = __find_file_by_substring(const.TRADE_DIR, client_oid)
-    logger.info(f'process the order file {file_path}')
-    with open(file_path, 'r', encoding='utf-8') as f:
-        loaded_data = json.load(f)
-    logger.debug(f"get the dataFrame from the file {file_path}")
-    return loaded_data
+        logger.debug(f"No files found under the prefix {prefix}")
+        return None
 
 def __modify_client_oid(clientOid : str, suffix: str):
     return f"{clientOid}-{suffix}"
@@ -108,38 +130,11 @@ def __get_suffix_from_client_oid(client_oid):
         return client_oid.split('_')[-1]
     return None
 
-def __find_file_by_substring(directory, substring):
-    for filename in os.listdir(directory):
-        if substring in filename and not filename.endswith(".html"):
-            return os.path.join(directory, filename)
-    return None  # if no match is found
-
-###################################################
-# not use anymore 
-###################################################
-
-def define_the_trailing_side(order_side) -> str:
-    if order_side == const.OPEN_SHORT:
-        return const.CLOSE_SHORT
-    elif order_side == const.OPEN_LONG:
-        return const.CLOSE_LONG
-
-def move_file(file_path, destination_dir):
-    """Move a file to a new directory."""
-    try:
-        if not os.path.exists(destination_dir):
-            os.makedirs(destination_dir)  # Create destination directory if it doesn't exist
-        shutil.move(file_path, destination_dir)
-        logger.debug(f"Moved {file_path} to {destination_dir}")
-    except Exception as e:
-        logger.debug(f"Error moving file {file_path}: {e}")
-
-def get_files_fifo(directory):
-    """Retrieve files from a directory in FIFO order based on creation time."""
-    files = [os.path.join(directory, f) for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f))]
-    files.sort(key=os.path.getctime)  # Sort files by creation time (oldest first)
-    return files
-
+def define_the_trailing_side(order_side, myconst) -> str:
+    if order_side == myconst.get("OPEN_SHORT"):
+        return myconst.get("CLOSE_SHORT")
+    elif order_side == myconst.get("OPEN_LONG"):
+        return myconst.get("CLOSE_LONG")
 
 
 
